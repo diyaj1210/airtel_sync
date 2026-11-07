@@ -29,15 +29,21 @@ Overall 7.4% lead → activation · 17.6 days average · ~3 status-chase calls �
 | Small multi-site | 755 | 11% | ₹28,080 | 11% | ₹1,717 |
 | Small manufacturers | 289 | 13% | ₹15,910 | 8% | ₹1,962 |
 
+All numbers on this page are reproduced by `python scripts/verify_outline.py`.
+
 ## Other signals
-- **GSTIN**: 10% conversion with vs 2% without.
+- **GSTIN**: 9.6% conversion with vs 2.0% without (same as PDF Appendix A1).
 - **Lead source**: Referral 15% (but 25% churn), Inbound call 10%, Channel partner 8%, Field sales 7%, Website 4%, WhatsApp campaign 3%.
-- **Status chasing hurts**: 1 follow-up call → 6% churn, NPS 7.5; 5 calls → 28% churn, NPS 6.0. Strong case for the Tracker.
+- **Status chasing hurts**: 1 follow-up call → 6% churn, NPS 7.5; 5 calls → 28% churn, NPS 6.0
+  (2 → 14%/7.2, 3 → 12%/6.9, 4 → 20%/6.7). Strong case for the Tracker.
 - **Existing base**: 1,505 leads are "Accel (mobile only)" customers → pre-filled upsell.
-- **Current setup**: mobile-hotspot users convert worst (4%); leased-line / mixed-per-site best (13–15%).
+- **Current setup**: no internet (4%) and mobile hotspot (5%, the largest group: 1,799 leads) convert
+  worst; leased line (15%) and mixed-per-site (13%) best.
 - **Contracts sold**: mostly 12 months (304), some 24 (61), almost no 6-month (3).
 
 ## Possible planted problems (compliance)
 - 22 activated customers have a **Cancelled/Suspended GSTIN**.
-- 49 product lines in activated bundles **break catalogue eligibility rules** (e.g. Biz Fibre 1G sold in tier 2, GSTIN-only products sold without GSTIN).
+- 49 product lines in activated bundles **break catalogue eligibility rules**. Rule breaks by kind
+  (one line can break several): city tier 24 (e.g. Biz Fibre 1G in tier 2), requires_gstin 12,
+  requires_one_of 9, min_employees 8.
 → Our rules engine prevents both.

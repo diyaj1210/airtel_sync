@@ -7,7 +7,11 @@
 - **Features**: segment, business_type, lead_source, city_tier, has_gstin, has_udyam,
   employee_count, num_sites, annual_turnover_band, current_internet, current_provider,
   monthly_telecom_spend_inr, number of products_of_interest, preferred_language
-- **Do not use** post-outcome columns (stage dates, drop_reason, bundle, churn, NPS) → leakage
+- **Do not use** post-outcome columns → leakage: stage_reached, outcome, drop_reason, all stage
+  dates, days_lead_to_activation, customer_follow_up_calls, bundle_products,
+  monthly_bundle_value_inr, one_time_setup_inr, contract_months, churned_within_6_months,
+  nps_score, and acquisition_cost_inr (cost grows as the lead moves down the funnel)
+- **Validation**: stratified train/test split (368 positives out of 5,000); report test AUC
 - **Model**: logistic regression (explainable) + gradient boosting for comparison; report AUC
 - **Output**: score 0–100 + top 3 reasons (feature contributions)
 

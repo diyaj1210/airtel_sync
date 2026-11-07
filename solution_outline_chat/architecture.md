@@ -34,7 +34,7 @@
 |---|---|
 | Frontend | React + Vite + TypeScript, mobile-first, i18n (Hindi/English + 1–2 regional) |
 | Backend | Node.js + Express + TypeScript |
-| AI service | Python FastAPI; LLM API for chat + explanation; Tesseract/vision model for OCR; scikit-learn for propensity |
+| AI service | Python FastAPI; LLM API for chat + explanation, with a deterministic no-key fallback so the demo runs without a key; OCR engine chosen in step 4 (Tesseract is not installed on the dev machine, so a pip-installable engine or a vision model is preferred); scikit-learn for propensity |
 | Data | SQLite or JSON for prototype; CSVs loaded at startup for registries & catalogue |
 | Events | In-process event emitter (prototype) |
 

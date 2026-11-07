@@ -1,14 +1,16 @@
 # Metrics, Targets & Rollout (Key question 5)
 
-## North-star and supporting metrics
-| Metric | Baseline (data) | Target (6 months after launch) |
-|---|---|---|
-| Lead → activation conversion | 7.4% | **12%** |
-| Needs assessed → quote accepted | 44% | **65%** |
-| Days lead → activation | 17.6 | **≤ 7** |
-| Blended CAC per activation | ₹15,000 | **≤ ₹8,000** |
-| 6-month churn | 15% (micro 23%) | **< 10%** |
-| Status-chase calls per customer | ~3 | **< 1** |
+## The 5 metrics that matter (key question 5 asks for 3–5)
+| # | Metric | Baseline (data) | Target (6 months after launch) |
+|---|---|---|---|
+| 1 | Lead → activation conversion (north star) | 7.4% | **12%** |
+| 2 | Days lead → activation | 17.6 | **≤ 7** for self-serve bundles (micro / professional, install 2–5 days); multi-site and leased-line bundles are bound by install time (SD-WAN 14, leased line 21–30 days) → target **≤ install days + 3** |
+| 3 | Blended CAC per activation | ₹15,000 | **≤ ₹8,000** |
+| 4 | 6-month churn | 15% (micro 23%) | **< 10%** |
+| 5 | Status-chase calls per customer | ~3 | **< 1** |
+
+Diagnostic (tracked, not a headline metric): needs assessed → quote accepted, 44% today (biggest
+leak) → 65%.
 
 ## Rough business case logic
 - Same 5,000 leads/quarter at 12% → ~600 activations vs 368 (+63%).
