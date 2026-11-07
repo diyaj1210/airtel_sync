@@ -8,7 +8,7 @@
 |---|---|
 | < ₹5k/month (micro, small professional) | Fully self-serve (Sol 1/2); partner earns commission if they referred |
 | ₹5k–10k/month | Self-serve, partner/field can step in on request |
-| > ₹10k/month (multi-site, manufacturers) | Field sales assisted — they earn ₹16k–28k/month, worth a visit |
+| > ₹10k/month (multi-site, manufacturers) | Field sales assisted — median deals are ₹15.9k (manufacturers) to ₹28.1k (multi-site) per month, worth a visit |
 
 ## Features
 - **Assist mode**: partner/sales fills the advisor at the counter; quote + consent link sent to

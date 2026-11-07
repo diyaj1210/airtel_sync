@@ -40,12 +40,16 @@ Supporting documents:
 | Key Q2 needs discovery without salesperson | Solution 1 + 2 |
 | Key Q3 near-instant, DPDP-compliant KYC | kyc-validation.md + architecture.md |
 | Key Q4 role of field force & partners | Solution 3 |
-| Key Q5 metrics & targets | metrics-and-rollout.md |
+| Key Q5 metrics & targets (3–5 metrics) | metrics-and-rollout.md |
+
+The full requirement-by-requirement checklist, mapped to build steps, is in
+[../docs/requirements-checklist.md](../docs/requirements-checklist.md). The numbers and bundles
+in this outline are checked by `python scripts/verify_outline.py`.
 
 ## Submission checklist
 - [ ] Working prototype + demo video (max 3 min) + code repo
 - [ ] Solution architecture diagram
-- [ ] Business case, max 10 slides (SYNC template)
+- [ ] Business case, max 10 slides (SYNC template): target customer, value, pricing or savings, rollout, risks
 - [ ] 1-page data privacy & security note
 
 ## Golden rule for the advisor
