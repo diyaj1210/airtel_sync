@@ -1,6 +1,6 @@
 # Build Plan (prototype)
 
-Build in this order — each step is one feature branch + PR. The add-on features A1 and A2 share
+Build in this order — each step is one feature branch + PR. The add-on features A1, A2 and A3 share
 one branch, `feature/add-ons`, at the user's request.
 
 | # | Branch | Deliverable | Done when |
@@ -16,6 +16,7 @@ one branch, `feature/add-ons`, at the user's request.
 | 8 | `feature/whatsapp-voice` | WhatsApp-style chat simulator + voice input (reuses the same APIs) | full journey possible in chat |
 | A1 | `feature/add-ons` | **One-Sitting Completion + No Dead Ends**: readiness check before any upload (states Not possible / Partner help / Needs review / Almost ready / Ready, percentage, expected time, install date from the shared timeline); blockers with an action each, kept on the application, shown in the app, the tracker and the back-office; fixes for K01-K12; save and return; one-sitting metrics | K01-K12 each give the expected state + blocker + fix (tests); no screen without a next action; card and blockers in Hindi and English |
 | A2 | `feature/add-ons` | **Privacy inside the journey (DPDP)**: lookup-first screen; five-section consent listing only what is still needed, separate optional marketing; server-side consent enforcement (403); one masking utility; encrypted document storage + retention job + deletion log; My data page; `docs/privacy-note.md` | upload without consent -> 403; masking and log redaction; deletion removes the file and records the date; withdrawal blocks activation; consent lists only documents still needed |
+| A3 | `feature/add-ons` | **Time-to-value quote + Day-1 value**: one shared `computeTimeline` (per-product ready date from typical_install_days, a dependent product never before its base link, bundle = latest, Day-1 products, service windows for long installs) used by the quote, the readiness check and the tracker; the quote shows name, monthly price, setup, contract (and the product that drives it, with a shorter-contract offer) and the approximate ready date, plus the value timeline and a Day-1 banner; the tracker shows planned vs actual per product | Office Pro 5 days / 12 months / Day 1 = P07 P16 P17 P20; Micro starter 3 days / 12 months (P22); Chain Connect 14 days / 24 months; Factory Connect 21 days / 24 months; dependents never before their base (tests); same dates in quote, readiness and tracker; Hindi and English |
 | 9 | `docs/submission` | Architecture diagram (components + data flows), 1-page privacy & security note, business case ≤10 slides (target customer, value, pricing or savings, rollout, risks), demo video script ≤3 min | all 4 submission items ready |
 
 ## Demo video (≤ 3 min) storyline

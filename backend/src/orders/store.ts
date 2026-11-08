@@ -105,6 +105,8 @@ export class OrderStore {
     const next = order.stages[currentStageIndex(order.stages) + 1];
     if (!next) return null;
     next.doneOn = next.expectedOn;
+    // Planned vs actual per product: a product is in once the installation has reached its planned day.
+    for (const line of order.lines) if (!line.doneOn && line.expectedOn <= next.doneOn) line.doneOn = line.expectedOn;
     order.notifications.push(notificationFor(order.notifications.length + 1, next, order.readyOn));
     return order;
   }

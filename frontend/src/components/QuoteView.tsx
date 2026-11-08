@@ -12,7 +12,7 @@ import {
   type SelectionProblem,
   type Variant,
 } from "../api/quote";
-import { formatInr } from "../format";
+import { formatDate, formatInr } from "../format";
 import { useI18n, type Translate } from "../i18n/I18nProvider";
 import { productDescription, unitLabel } from "../i18n/products";
 import { describeBlock } from "../i18n/reasons";
@@ -187,6 +187,35 @@ export function QuoteView({
           {t("quote.forBusiness", { employees: quote.profile.employees, sites: quote.profile.sites })}
         </p>
 
+        {/* The five elements of every quote, then the time to value. */}
+        <div className="quote-card" data-testid="quote-card">
+          <p className="quote-card__price">{t("ttv.perMonth", { price: formatInr(quote.totals.monthlyInr) })}</p>
+          <p>{t("ttv.setup", { price: formatInr(quote.totals.setupInr) })}</p>
+          <p>{t("ttv.contract", { months: quote.contract.months })}</p>
+          {quote.timeline.window ? (
+            <p data-testid="ready-estimate">{t("ttv.window", { from: quote.timeline.window.from, to: quote.timeline.window.to })}</p>
+          ) : (
+            <p data-testid="ready-estimate">{t("ttv.ready", { days: quote.timeline.readyDays, date: formatDate(quote.timeline.readyOn, lang) })}</p>
+          )}
+          <p className="small muted" data-testid="contract-driver">
+            {t("ttv.contractBecause", { months: quote.contract.months, products: quote.contract.drivers.map((d) => productName(d.productId)).join(", ") })}
+          </p>
+          {quote.contract.shorter && (
+            <button
+              type="button"
+              className="button-secondary button-small"
+              disabled={loading}
+              onClick={() => {
+                const item = quote.items.find((i) => i.productId === quote.contract.shorter!.remove);
+                if (item) toggle(item);
+              }}
+            >
+              {t("ttv.shorter", { product: productName(quote.contract.shorter.remove), months: quote.contract.shorter.months })}
+            </button>
+          )}
+          {quote.timeline.window && <p className="small">{t("ttv.partner")}</p>}
+        </div>
+
         {quote.variants.length > 1 && (
           <fieldset className="field">
             <legend className="field__label">{t("quote.planLength")}</legend>
@@ -224,6 +253,33 @@ export function QuoteView({
           <p>{t("quote.error")}</p>
         </section>
       )}
+
+      <section className="card" aria-labelledby="ttv-title" data-testid="value-timeline">
+        <h3 id="ttv-title" className="card__title">
+          {t("ttv.title")}
+        </h3>
+        {quote.timeline.dayOne.length > 0 && quote.timeline.readyDays > 1 && (
+          <p className="ttv-banner" data-testid="day-one-banner">
+            {t("ttv.dayOneBanner", { n: quote.timeline.dayOne.length })}
+          </p>
+        )}
+        <ol className="ttv">
+          {quote.timeline.groups.map((g) => (
+            <li key={g.days} className="ttv__day">
+              <span className="ttv__when">{t("ttv.day", { day: g.days, date: formatDate(g.readyOn, lang) })}</span>
+              <span>
+                {g.productIds
+                  .map((id) => {
+                    const line = quote.timeline.lines.find((l) => l.productId === id)!;
+                    return line.waitsFor ? t("ttv.waits", { product: productName(id), base: productName(line.waitsFor) }) : productName(id);
+                  })
+                  .join(", ")}
+              </span>
+            </li>
+          ))}
+        </ol>
+        <p className="muted small">{t("ttv.estimate")}</p>
+      </section>
 
       <section className="card">
         <h3 className="card__title">{t("quote.included")}</h3>
@@ -272,7 +328,11 @@ export function QuoteView({
           </div>
           <div>
             <dt>{t("quote.ready")}</dt>
-            <dd data-testid="ready">{plural(t, "quote.day", quote.totals.installDays)}</dd>
+            <dd data-testid="ready">
+              {quote.timeline.window
+                ? t("ttv.windowShort", { from: quote.timeline.window.from, to: quote.timeline.window.to })
+                : plural(t, "quote.day", quote.timeline.readyDays)}
+            </dd>
           </div>
         </dl>
         <p className="summary__note">{loading ? t("quote.updating") : t("quote.priceNote")}</p>

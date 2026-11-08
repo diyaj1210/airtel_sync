@@ -90,15 +90,22 @@ describe("MOCK payment and tracker", () => {
     expect(screen.getByText("Next: Installation scheduled, expected 16 July 2026")).toBeInTheDocument();
     expect(within(screen.getByTestId("stage-order_placed")).getByText("Done 15 July 2026")).toBeInTheDocument();
     expect(within(screen.getByTestId("stage-installed")).getByText("Expected 20 July 2026")).toBeInTheDocument();
-    expect(within(screen.getByTestId("line-P07")).getByText("Ready by 16 July 2026")).toBeInTheDocument(); // SIMs: 1 day
-    expect(within(screen.getByTestId("line-P02")).getByText("Ready by 20 July 2026")).toBeInTheDocument(); // fibre: 5 days
+    // Planned vs actual per product (the same timeline as the quote).
+    expect(screen.getByTestId("line-dates-P07")).toHaveTextContent("Planned 16 July 2026 · not yet"); // SIMs: 1 day
+    expect(screen.getByTestId("line-dates-P02")).toHaveTextContent("Planned 20 July 2026 · not yet"); // fibre: 5 days
     expect(within(screen.getByTestId("updates")).getAllByRole("listitem")).toHaveLength(2);
     expect(screen.getByText("Payment received and order placed. Everything should be ready by 20 July 2026.")).toBeInTheDocument();
 
     for (const stage of ["Installation scheduled", "Installed", "Activated"]) {
       await u.click(screen.getByRole("button", { name: "MOCK: move to the next stage" }));
       await waitFor(() => expect(screen.getByTestId("track-now").textContent).toBe(`Now: ${stage}`));
+      if (stage === "Installation scheduled") {
+        // Day 1: the SIMs are in, the fibre not yet.
+        expect(screen.getByTestId("line-dates-P07")).toHaveTextContent("Planned 16 July 2026 · done 16 July 2026");
+        expect(screen.getByTestId("line-dates-P02")).toHaveTextContent("not yet");
+      }
     }
+    expect(screen.getByTestId("line-dates-P02")).toHaveTextContent("Planned 20 July 2026 · done 20 July 2026");
     expect(screen.getByText("Active since")).toBeInTheDocument();
     expect(screen.getByText("Your services are active. Welcome to Accel Business!")).toBeInTheDocument();
     expect(within(screen.getByTestId("updates")).getAllByRole("listitem")).toHaveLength(5);

@@ -1664,3 +1664,45 @@ p {
   font-size: 1.25rem;
   font-weight: 700;
 }
+
+/* ---- Time to value (add-on A3) ---- */
+.quote-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 8px 0;
+}
+
+.quote-card__price {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.ttv {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ttv__day {
+  display: flex;
+  flex-direction: column;
+  padding-left: 12px;
+  border-left: 3px solid var(--color-ok-text);
+}
+
+.ttv__when {
+  font-weight: 600;
+}
+
+.ttv-banner {
+  margin-bottom: 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--color-ok-bg);
+  color: var(--color-ok-text);
+  font-weight: 600;
+}

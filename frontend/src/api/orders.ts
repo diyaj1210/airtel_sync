@@ -27,7 +27,8 @@ export interface Order {
   placedOn: string;
   payment: { mock: true; reference: string; method: PaymentMethod; paidOn: string; setupInr: number; firstMonthInr: number; totalInr: number };
   bundle: { name: string; monthlyInr: number; setupInr: number; contractMonths: number };
-  lines: { productId: string; name: string; qty: number; unit: string; installDays: number; expectedOn: string }[];
+  /** Planned (expectedOn) vs actual (doneOn) per product, from the same timeline as the quote. */
+  lines: { productId: string; name: string; qty: number; unit: string; installDays: number; ownDays?: number; waitsFor?: string | null; expectedOn: string; doneOn?: string | null }[];
   stages: { stage: Stage; expectedOn: string; doneOn: string | null }[];
   currentStage: Stage;
   nextStage: { stage: Stage; expectedOn: string } | null;
