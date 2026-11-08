@@ -55,7 +55,7 @@ S6 propensity · S7 backoffice · S8 whatsapp-voice · S9 submission docs.
 
 - [ ] **R3.1** Voice **or** WhatsApp front end (we plan both: WhatsApp-style simulator + voice input) — S8
 - [ ] **R3.2** Back-office view for sales or partners showing **leads the advisor could not close** — S3 (records them), S7 (view) *(S3 done: 'Talk to a person' (phone + consent) and 'Not for me' (reason) save a lead with the reason, business facts, recommendation and products asked about but not available; 'could not understand' recorded when the advisor got stuck; `GET /api/advisor/leads` (phone masked); the view is S7)*
-- [ ] **R3.3** Simple **propensity score** for which leads to call — S6 (model + API), S7 (shown in back-office)
+- [ ] **R3.3** Simple **propensity score** for which leads to call — S6 (model + API), S7 (shown in back-office) *(S6 done: logistic regression on the arrival details of each lead (no leakage columns), test AUC 0.670 / 5-fold CV 0.724, top 20% of leads hold 32% of activations; score 0-100 + band (top 20% = call within 24 h) + top 3 reasons; `POST /api/propensity/score`, `GET /api/propensity/leads/:id`; report in `docs/propensity-report.md`; the back-office view is S7)*
 
 ## 4. Key questions (PDF p.3) — answered in the business case and shown in the prototype
 
@@ -85,7 +85,7 @@ S6 propensity · S7 backoffice · S8 whatsapp-voice · S9 submission docs.
 - [x] **R6.8** Price within catalogue range (`price_min`–`price_max`); setup fee and minimum contract from the catalogue — S1, S2 *(S1 + S2: list price = price_min, per-unit setup, contract = max; matches all 368 past bundles)*
 - [x] **R6.9** "GSTIN lookup" API backed by `mock_gstin_registry.csv` (legal name, address, status incl. cancelled/suspended) — S4
 - [x] **R6.10** "Udyam lookup" API backed by `mock_udyam_registry.csv` — S4
-- [ ] **R6.11** `smb_leads.csv` used for insights (business case) and the propensity model — S6, S9
+- [ ] **R6.11** `smb_leads.csv` used for insights (business case) and the propensity model — S6, S9 *(S6 done: the model is trained on it (read-only); insights for the business case: S9)*
 - [x] **R6.12** Smart KYC catches the planted problems in `kyc_documents/` (K01–K12); expected results listed in `kyc-validation.md`, one automated test per applicant — S4 *(S4: `backend/tests/kyc/samples.test.ts`, one test each on the real OCR output; the same 12 through the API; a live run with the real OCR: all 12 as expected)*
 - [x] **R6.13** Real GSTIN format check with valid checksum — S4 *(S4: state code, PAN shape, holder type, entity digit, Z, mod-36 checksum; all 3,534 registry GSTINs pass; also checked in the app while typing)*
 - [x] **R6.14** GSTIN validator **accepts `X` as the 4th PAN character** — S4
@@ -108,6 +108,6 @@ S6 propensity · S7 backoffice · S8 whatsapp-voice · S9 submission docs.
 
 ## 8. Team quality gates (from CLAUDE.md)
 
-- [ ] **R8.1** Automated tests: rules engine, pricing (S1, S2), advisor scenarios ≥15 (S3), KYC checks + GSTIN checksum + K01–K12 (S4), tracker dates (S5), propensity model (S6) *(S1–S5 done: advisor 21 scenarios × 3 LLM modes; KYC: K01–K12 one test each, check edge cases, validators on every registry record, OCR on all 47 images; tracker dates per bundle and over 240 profiles; API and UI tests)*
+- [ ] **R8.1** Automated tests: rules engine, pricing (S1, S2), advisor scenarios ≥15 (S3), KYC checks + GSTIN checksum + K01–K12 (S4), tracker dates (S5), propensity model (S6) *(S1–S6 done: advisor 21 scenarios × 3 LLM modes; KYC: K01–K12 one test each, check edge cases, validators on every registry record, OCR on all 47 images; tracker dates per bundle and over 240 profiles; propensity: no-leakage scramble test, reproducible model file, served = scikit-learn, reported AUC; API and UI tests)*
 - [ ] **R8.2** Every mock (payments, e-sign, DigiLocker, WhatsApp API) works and is labelled as a mock — S4, S5, S8 *(S4 done: MOCK e-sign (DigiLocker / Aadhaar-OTP style) and MOCK registry lookups work and are labelled in the UI and the API; S5 done: MOCK payment (with a MOCK failure) and the MOCK "next stage" button, labelled; WhatsApp S8)*
 - [ ] **R8.3** README "how to run" kept current after every step — S0–S9 *(S0: written)*

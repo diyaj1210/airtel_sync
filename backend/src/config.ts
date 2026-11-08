@@ -17,6 +17,8 @@ export interface Config {
   advisorTimeoutMs: number;
   /** Reading one KYC document (OCR: 1-5 s; the first one also loads the models). */
   kycOcrTimeoutMs: number;
+  /** Scoring up to 500 leads (milliseconds of arithmetic; the first call also loads the data). */
+  propensityTimeoutMs: number;
 }
 
 /** Repo root: backend/src (dev, via tsx) and backend/dist (built) are both two levels down. */
@@ -72,5 +74,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     aiServiceTimeoutMs: 2000,
     advisorTimeoutMs: 15000,
     kycOcrTimeoutMs: 60000,
+    propensityTimeoutMs: 10000,
   };
 }

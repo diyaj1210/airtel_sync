@@ -9,6 +9,7 @@ import { createAiServiceReader } from "./kyc/documents.js";
 import { DEFAULT_GSTIN_REGISTRY_PATH, loadRegistries, type Registries } from "./kyc/registry.js";
 import { loadSamples, type SampleApplicant } from "./kyc/samples.js";
 import { createLogger } from "./logger.js";
+import { createAiServicePropensity } from "./propensity/client.js";
 import { QuoteStore } from "./quote/store.js";
 
 const envLoaded = loadRootEnv();
@@ -50,6 +51,7 @@ const app = createApp({
   registries,
   kycSamples,
   documentReader: createAiServiceReader(config.aiServiceUrl, config.kycOcrTimeoutMs),
+  propensity: createAiServicePropensity(config.aiServiceUrl, config.propensityTimeoutMs),
 });
 
 const server = app.listen(config.port, () => {

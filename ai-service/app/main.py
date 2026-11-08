@@ -9,6 +9,8 @@ from .advisor.routes import advisor_router
 from .config import Config, load_config
 from .kyc.reader import DocumentReader
 from .kyc.routes import kyc_router
+from .propensity.model import MODEL_PATH, PropensityModel
+from .propensity.routes import propensity_router
 
 _FROM_CONFIG = object()
 
@@ -24,6 +26,7 @@ def create_app(
     config: Config | None = None,
     llm: LlmClient | None | object = _FROM_CONFIG,
     document_reader: DocumentReader | None = None,
+    propensity: PropensityModel | None | object = _FROM_CONFIG,
 ) -> FastAPI:
     app = FastAPI(
         title="Udyam Digital AI service",
@@ -35,6 +38,10 @@ def create_app(
     app.state.llm = llm
     # OCR for KYC documents (RapidOCR, offline). The models load on the first document.
     app.state.document_reader = document_reader or DocumentReader()
+    # Lead propensity model (models/propensity.json, written by python -m app.propensity.train).
+    if propensity is _FROM_CONFIG:
+        propensity = PropensityModel.load() if MODEL_PATH.is_file() else None
+    app.state.propensity = propensity
 
     @app.get("/health")
     def health() -> dict[str, str]:
@@ -42,6 +49,7 @@ def create_app(
 
     app.include_router(advisor_router())
     app.include_router(kyc_router())
+    app.include_router(propensity_router())
     return app
 
 
