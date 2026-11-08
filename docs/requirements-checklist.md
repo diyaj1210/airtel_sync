@@ -12,8 +12,8 @@ S6 propensity · S7 backoffice · S8 whatsapp-voice · S9 submission docs.
 
 - [ ] **R1.1** Digital-first acquisition **and** onboarding journey: discover the right bundle → buy it → get it activated — S2, S3, S4, S5
 - [ ] **R1.2** Minimal human effort (self-serve end to end; humans only for exceptions) — S3, S4, S5, S7
-- [ ] **R1.3** Works on a phone (mobile-first UI) — S0 onwards
-- [ ] **R1.4** In the owner's preferred language (at least Hindi and English, language switch) — S0 (shell), S3 (advisor replies)
+- [ ] **R1.3** Works on a phone (mobile-first UI) — S0 onwards *(S0: mobile-first shell, 44px tap targets, safe-area insets; every later screen must keep this)*
+- [ ] **R1.4** In the owner's preferred language (at least Hindi and English, language switch) — S0 (shell), S3 (advisor replies) *(S0 done: English/हिंदी switch, saved on device, typed translations with key-parity tests)*
 
 ## 2. Build challenge: required modules (PDF p.3)
 
@@ -100,14 +100,14 @@ S6 propensity · S7 backoffice · S8 whatsapp-voice · S9 submission docs.
 - [ ] **R7.2** Collect only what each step needs (data minimisation; lookup before upload) — S3, S4
 - [ ] **R7.3** Clear consent notice **before** KYC (what, why, how long, how to withdraw) — S4
 - [ ] **R7.4** Mask identifiers (GSTIN, Udyam, ID numbers) **in the UI** — S4, S5, S7
-- [ ] **R7.5** Mask identifiers **in logs**; never log raw documents — S0 (logger), S4
+- [ ] **R7.5** Mask identifiers **in logs**; never log raw documents — S0 (logger), S4 *(S0 done: masking JSON loggers in backend + ai-service, incl. uvicorn access logs; documents/bodies never logged; tested)*
 - [ ] **R7.6** Explain how long documents are retained (shown on consent screen + privacy note) — S4, S9
 - [ ] **R7.7** Purpose limitation: KYC data used only for onboarding/compliance — S4, S9
-- [ ] **R7.8** No secrets in the repo: `.env` ignored, `.env.example` provided — S0
+- [x] **R7.8** No secrets in the repo: `.env` ignored, `.env.example` provided — S0
 - [ ] **R7.9** The 1-page privacy note covers all of the above — S9
 
 ## 8. Team quality gates (from CLAUDE.md)
 
 - [ ] **R8.1** Automated tests: rules engine, pricing (S1, S2), advisor scenarios ≥15 (S3), KYC checks + GSTIN checksum + K01–K12 (S4), tracker dates (S5), propensity model (S6)
 - [ ] **R8.2** Every mock (payments, e-sign, DigiLocker, WhatsApp API) works and is labelled as a mock — S4, S5, S8
-- [ ] **R8.3** README "how to run" kept current after every step — S0–S9
+- [ ] **R8.3** README "how to run" kept current after every step — S0–S9 *(S0: written)*

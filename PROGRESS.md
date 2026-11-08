@@ -6,8 +6,8 @@ Status values: **not started** · **in progress** · **done** (done = merged to 
 
 | # | Branch | Status | Delivered |
 |---|---|---|---|
-| – | `docs/outline-verification` | done (awaiting commit + PR) | Outline checked against PDF and data README; fixes in `solution_outline_chat/`; `scripts/verify_outline.py` (all checks pass); `docs/requirements-checklist.md`; `PROGRESS.md`; `CLAUDE.md` |
-| 0 | `chore/scaffold` | not started | – |
+| – | `docs/outline-verification` | done (PR #2 merged) | Outline checked against PDF and data README; fixes in `solution_outline_chat/`; `scripts/verify_outline.py` (all checks pass); `docs/requirements-checklist.md`; `PROGRESS.md`; `CLAUDE.md` |
+| 0 | `chore/scaffold` | done (awaiting commit + PR) | `frontend/` React 19 + Vite 7 + TS mobile-first shell, English/हिंदी switch (saved on device, sets `<html lang>`), system-status card; `backend/` Express 5 + TS with `/api/health`, `/api/health/full` (checks ai-service, 503 when degraded), masking JSON logger, config validation; `ai-service/` FastAPI with `/health`, masking JSON logging incl. uvicorn access logs; `.env.example`; README "How to run". Tests: backend 44, frontend 17, ai-service 36, all passing; `npm audit` and `pip-audit` clean. |
 | 1 | `feature/catalogue-rules` | not started | – |
 | 2 | `feature/quote` | not started | – |
 | 3 | `feature/advisor` | not started | – |
@@ -25,6 +25,14 @@ Status values: **not started** · **in progress** · **done** (done = merged to 
   installing it, a pip-only engine, or a vision LLM (needs a key; the no-key path must still work).
 
 ## Log
+
+- **2026-11-08**: Step 0 scaffold. Verified: dependency install from scratch, typecheck, all
+  tests, frontend production build, backend production build, all three services running
+  together (frontend → Vite proxy → backend → ai-service), degraded paths (ai-service down →
+  503 "degraded"; backend down → UI shows "Not reachable"), and masked identifiers in live logs.
+  Dependency notes: Vitest 4.1.12 and Vite 7.3.7 chosen because older versions have published
+  advisories; `.npmrc` `legacy-peer-deps=true` works around an npm 10.9 crash on Vitest 4's
+  optional peers; Python tests use `httpx2` (Starlette 1.x prefers it).
 
 - **2026-11-08**: Outline verification (pre-step). All numbers and bundles reproduced by
   `python scripts/verify_outline.py` (ALL CHECKS PASSED). Outline fixes:
