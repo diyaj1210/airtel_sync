@@ -12,6 +12,7 @@ describe("loadConfig", () => {
       logLevel: "info",
       aiServiceTimeoutMs: 2000,
       advisorTimeoutMs: 15000,
+      kycOcrTimeoutMs: 60000,
     });
   });
 

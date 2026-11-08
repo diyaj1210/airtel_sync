@@ -3,6 +3,7 @@ import type { AcceptedQuote, BusinessProfile, QuoteRequest, Segment } from "./ap
 import { AcceptedView } from "./components/AcceptedView";
 import { AdvisorChat } from "./components/AdvisorChat";
 import { BusinessForm, EMPTY_FORM, type FormValues } from "./components/BusinessForm";
+import { KycFlow } from "./components/kyc/KycFlow";
 import { LanguageSwitch } from "./components/LanguageSwitch";
 import { QuoteView } from "./components/QuoteView";
 import { SystemStatus } from "./components/SystemStatus";
@@ -13,7 +14,8 @@ type Screen =
   | { name: "advisor" }
   | { name: "form" }
   | { name: "quote"; request: QuoteRequest; from: "form" | "advisor"; key: number }
-  | { name: "accepted"; accepted: AcceptedQuote };
+  | { name: "accepted"; accepted: AcceptedQuote }
+  | { name: "kyc"; quoteId: string | null; key: number };
 
 export function App({ fetchFn }: { fetchFn?: typeof fetch }) {
   const { t } = useI18n();
@@ -23,6 +25,12 @@ export function App({ fetchFn }: { fetchFn?: typeof fetch }) {
   // The chat stays mounted once started, so going to the quote and back keeps the conversation.
   const [chatOpen, setChatOpen] = useState(false);
   const [quoteKey, setQuoteKey] = useState(0);
+  const [kycKey, setKycKey] = useState(0);
+
+  const openKyc = (quoteId: string | null) => {
+    setKycKey((k) => k + 1);
+    setScreen({ name: "kyc", quoteId, key: kycKey + 1 });
+  };
 
   const openQuote = (request: QuoteRequest, from: "form" | "advisor") => {
     setQuoteKey((k) => k + 1);
@@ -80,6 +88,12 @@ export function App({ fetchFn }: { fetchFn?: typeof fetch }) {
                 {t("home.cta")}
               </button>
             </section>
+            <section className="card">
+              <p className="muted">{t("home.kycHint")}</p>
+              <button type="button" className="button-secondary" onClick={() => openKyc(null)}>
+                {t("home.kyc")}
+              </button>
+            </section>
             <SystemStatus fetchFn={fetchFn} />
           </>
         )}
@@ -104,11 +118,15 @@ export function App({ fetchFn }: { fetchFn?: typeof fetch }) {
         {screen.name === "accepted" && (
           <AcceptedView
             accepted={screen.accepted}
+            onKyc={() => openKyc(screen.accepted.quoteId)}
             onNewQuote={() => {
               setFormValues(EMPTY_FORM);
               setScreen({ name: "form" });
             }}
           />
+        )}
+        {screen.name === "kyc" && (
+          <KycFlow key={screen.key} quoteId={screen.quoteId} onExit={() => setScreen({ name: "home" })} fetchFn={fetchFn} />
         )}
       </main>
 
