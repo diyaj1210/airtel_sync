@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import type { BusinessDetails } from "./checks.js";
 import type { DocType, DocumentReading } from "./documents.js";
+import type { KycReview } from "./review.js";
 
 /**
  * KYC cases, in memory (prototype). What is kept, and for how long, is what the consent screen
@@ -36,6 +37,10 @@ export interface KycCase {
   documents: Partial<Record<DocType, DocumentReading>>;
   submitted: boolean;
   esign: EsignState | null;
+  /** Partner / sales code the owner was referred by (from the quote, or given when starting), or null. */
+  attributionCode: string | null;
+  /** A reviewer's decision on a manual-review case (back-office), or null. */
+  review: KycReview | null;
 }
 
 export class KycCaseStore {
@@ -47,7 +52,7 @@ export class KycCaseStore {
     private readonly maxCases = MAX_CASES,
   ) {}
 
-  create(lang: "en" | "hi", quoteId: string | null): KycCase {
+  create(lang: "en" | "hi", quoteId: string | null, attributionCode: string | null = null): KycCase {
     let caseId = this.newId();
     for (let tries = 0; this.cases.has(caseId); tries++) {
       if (tries > 10) throw new Error("Could not generate a unique KYC case id");
@@ -64,6 +69,8 @@ export class KycCaseStore {
       documents: {},
       submitted: false,
       esign: null,
+      attributionCode,
+      review: null,
     };
     this.cases.set(caseId, kycCase);
     return kycCase;
@@ -76,6 +83,10 @@ export class KycCaseStore {
   /** Consent withdrawn: the case and everything in it is deleted. */
   delete(caseId: string): boolean {
     return this.cases.delete(caseId);
+  }
+
+  list(): KycCase[] {
+    return [...this.cases.values()];
   }
 
   get size(): number {

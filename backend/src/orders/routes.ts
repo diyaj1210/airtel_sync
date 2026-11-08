@@ -1,6 +1,6 @@
 import { Router } from "express";
 import type { Catalogue } from "../catalogue/catalogue.js";
-import { evaluateKyc } from "../kyc/checks.js";
+import { evaluateCase } from "../kyc/review.js";
 import type { Registries } from "../kyc/registry.js";
 import type { KycCaseStore } from "../kyc/store.js";
 import type { Logger } from "../logger.js";
@@ -52,7 +52,7 @@ export function ordersRouter(deps: OrderDeps): Router {
   const checkoutFor = (caseId: string) => {
     const kycCase = kycStore.get(caseId);
     if (!kycCase) return null;
-    const evaluation = evaluateKyc({ business: kycCase.business, documents: kycCase.documents, submitted: kycCase.submitted }, registries, today());
+    const evaluation = evaluateCase(kycCase, registries, today());
     const quote = kycCase.quoteId ? quoteStore.get(kycCase.quoteId) : undefined;
     return { kycCase, quote, result: checkout(kycCase, evaluation, quote, catalogue, today(), orderStore.forCase(caseId)?.orderId ?? null) };
   };
@@ -89,6 +89,7 @@ export function ordersRouter(deps: OrderDeps): Router {
       method,
       placedOn: today(),
       kycVerifiedOn: kycCase.esign!.signed!.signedOn,
+      attributionCode: kycCase.attributionCode ?? quote!.attributionCode,
     });
     logger.info("order placed (MOCK payment)", { orderId: order.orderId, caseId: kycCase.caseId, method, totalInr: order.payment.totalInr });
     res.status(201).json(orderView(order));

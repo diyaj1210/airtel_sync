@@ -15,6 +15,7 @@ import {
 import type { MessageKey } from "../../i18n/en";
 import { useI18n } from "../../i18n/I18nProvider";
 import { issueText } from "./kycText";
+import { formatDate } from "../../format";
 
 const STATE_BADGE = { ok: "ok", problem: "down", rejected: "unknown", not_uploaded: "unknown" } as const;
 
@@ -150,8 +151,11 @@ export function KycResult({ kyc }: { kyc: KycCase }) {
         {t(`kyc.result.${result.status}`)}
       </h3>
       {result.status !== "not_started" && <p>{t(`kyc.result.${result.status}.body` as MessageKey)}</p>}
+      {result.review?.decision === "approved" && <p className="kyc-review">{t("kyc.result.approved", { date: formatDate(result.review.on, lang) })}</p>}
+      {result.review?.note && <p className="kyc-review">{t("kyc.result.reviewNote", { note: result.review.note })}</p>}
       <IssueList title={t("kyc.result.fixList")} issues={fixes} />
-      <IssueList title={t("kyc.result.reviewList")} issues={reviews} />
+      {/* Once a reviewer approved, the review items are settled; they stay listed for a rejection. */}
+      {result.review?.decision !== "approved" && <IssueList title={t("kyc.result.reviewList")} issues={reviews} />}
       {result.blockedProducts.length > 0 && (
         <p className="kyc-blocked">{t("kyc.result.blocked", { products: result.blockedProducts.map((p) => p.name).join(", ") })}</p>
       )}

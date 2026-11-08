@@ -3,7 +3,7 @@
  * Due now = one-time setup + the first month (MOCK payment; no money moves).
  */
 import type { Catalogue } from "../catalogue/catalogue.js";
-import type { KycEvaluation } from "../kyc/checks.js";
+import type { CaseEvaluation } from "../kyc/review.js";
 import type { KycCase } from "../kyc/store.js";
 import type { AcceptedQuote } from "../quote/store.js";
 
@@ -30,7 +30,7 @@ export interface Checkout {
 
 export function checkout(
   kycCase: KycCase,
-  evaluation: KycEvaluation,
+  evaluation: CaseEvaluation,
   quote: AcceptedQuote | undefined,
   catalogue: Catalogue,
   today: string,

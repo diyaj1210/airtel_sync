@@ -1,4 +1,5 @@
 /** Types and calls for the backend quote API (backend/src/quote). */
+import { withReferral } from "../referral";
 
 export type Segment = "micro" | "prof" | "multi" | "mfg";
 export type Variant = "standard" | "lite";
@@ -123,4 +124,4 @@ export const fetchProducts = async (fetchFn: FetchFn = fetch): Promise<ProductSu
 
 export const fetchQuote = (req: QuoteRequest, fetchFn: FetchFn = fetch) => call<Quote>(fetchFn, "/api/quote", req);
 
-export const acceptQuote = (req: QuoteRequest, fetchFn: FetchFn = fetch) => call<AcceptedQuote>(fetchFn, "/api/quotes", req);
+export const acceptQuote = (req: QuoteRequest, fetchFn: FetchFn = fetch) => call<AcceptedQuote>(fetchFn, "/api/quotes", withReferral(req));

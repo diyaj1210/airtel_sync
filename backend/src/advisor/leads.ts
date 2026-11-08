@@ -25,6 +25,18 @@ export const LEAD_REASONS = [
 ] as const;
 export type LeadReason = (typeof LEAD_REASONS)[number];
 
+/** Follow-up by sales / partners in the back-office (step 7). */
+export const FOLLOW_UP_STATUSES = ["new", "contacted", "converted", "lost"] as const;
+export type FollowUpStatus = (typeof FOLLOW_UP_STATUSES)[number];
+
+export interface FollowUp {
+  status: FollowUpStatus;
+  /** Staff code of the sales person or partner who owns the follow-up, or null. */
+  assignedTo: string | null;
+  updatedOn: string | null;
+  updatedBy: string | null;
+}
+
 export interface AdvisorLead {
   leadId: string;
   sessionId: string;
@@ -41,6 +53,9 @@ export interface AdvisorLead {
   recommendation: { templateId: string; name: string; monthlyInr: number; productIds: ProductId[] } | null;
   askedAboutUnavailable: ProductId[];
   advisorTurns: number;
+  /** Partner / sales code the owner was referred by, or null. */
+  attributionCode: string | null;
+  followUp: FollowUp;
 }
 
 export type AdvisorLeadView = Omit<AdvisorLead, "phone" | "sessionId"> & { phoneMasked: string | null };
@@ -98,6 +113,9 @@ export class LeadStore {
         : null,
       askedAboutUnavailable: [...session.askedUnavailable],
       advisorTurns: session.turns,
+      attributionCode: session.attributionCode,
+      // A referred lead starts with the partner / sales person who referred it.
+      followUp: existing?.followUp ?? { status: "new", assignedTo: session.attributionCode, updatedOn: null, updatedBy: null },
     };
     this.leads.set(lead.leadId, lead);
     session.leadId = lead.leadId;
@@ -110,6 +128,19 @@ export class LeadStore {
 
   get(leadId: string): AdvisorLead | undefined {
     return this.leads.get(leadId);
+  }
+
+  /** Back-office follow-up (status and/or who owns it). */
+  setFollowUp(leadId: string, change: { status?: FollowUpStatus; assignedTo?: string | null }, by: string): AdvisorLead | undefined {
+    const lead = this.leads.get(leadId);
+    if (!lead) return undefined;
+    lead.followUp = {
+      status: change.status ?? lead.followUp.status,
+      assignedTo: change.assignedTo !== undefined ? change.assignedTo : lead.followUp.assignedTo,
+      updatedOn: this.today(),
+      updatedBy: by,
+    };
+    return lead;
   }
 
   private uniqueId(): string {

@@ -24,6 +24,8 @@ export interface Order {
   stages: StageState[];
   readyOn: string;
   notifications: TrackerNotification[];
+  /** Partner / sales code credited with the order (back-office only; not shown to the owner), or null. */
+  attributionCode: string | null;
 }
 
 const hexId = (prefix: string) => () => `${prefix}-${randomBytes(4).toString("hex").toUpperCase()}`;
@@ -39,7 +41,15 @@ export class OrderStore {
   ) {}
 
   /** Place the order for a paid quote. One order per KYC case. */
-  place(input: { caseId: string; quoteId: string; quote: Quote; method: PaymentMethod; placedOn: string; kycVerifiedOn: string }): Order {
+  place(input: {
+    caseId: string;
+    quoteId: string;
+    quote: Quote;
+    method: PaymentMethod;
+    placedOn: string;
+    kycVerifiedOn: string;
+    attributionCode?: string | null;
+  }): Order {
     if (this.byCase.has(input.caseId)) throw new Error("This KYC case already has an order");
     let orderId = this.newOrderId();
     for (let tries = 0; this.orders.has(orderId); tries++) {
@@ -71,6 +81,7 @@ export class OrderStore {
       stages: plan.stages,
       readyOn: plan.readyOn,
       notifications: [],
+      attributionCode: input.attributionCode ?? null,
     };
     // The two stages already done when the order is placed.
     for (const stage of plan.stages.filter((s) => s.doneOn)) order.notifications.push(notificationFor(order.notifications.length + 1, stage, plan.readyOn));
@@ -93,6 +104,10 @@ export class OrderStore {
 
   get(orderId: string): Order | undefined {
     return ORDER_ID_RE.test(orderId) ? this.orders.get(orderId) : undefined;
+  }
+
+  list(): Order[] {
+    return [...this.orders.values()];
   }
 
   forCase(caseId: string): Order | undefined {

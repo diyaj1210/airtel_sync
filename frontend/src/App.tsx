@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import type { AcceptedQuote, BusinessProfile, QuoteRequest, Segment } from "./api/quote";
 import { AcceptedView } from "./components/AcceptedView";
 import { AdvisorChat } from "./components/AdvisorChat";
@@ -11,6 +11,7 @@ import { LanguageSwitch } from "./components/LanguageSwitch";
 import { QuoteView } from "./components/QuoteView";
 import { SystemStatus } from "./components/SystemStatus";
 import { useI18n } from "./i18n/I18nProvider";
+import { checkReferral, pendingReferralCode, setReferral, type Referral } from "./referral";
 
 type Screen =
   | { name: "home" }
@@ -31,6 +32,26 @@ export function App({ fetchFn }: { fetchFn?: typeof fetch }) {
   const [chatOpen, setChatOpen] = useState(false);
   const [quoteKey, setQuoteKey] = useState(0);
   const [kycKey, setKycKey] = useState(0);
+
+  // Partner / sales referral from the link (?ref=PTR-01) or remembered on this device.
+  const [referral, setReferralState] = useState<Referral | null>(null);
+  useEffect(() => {
+    const code = pendingReferralCode(window.location.search);
+    if (!code) return;
+    let live = true;
+    void checkReferral(code, fetchFn).then((r) => {
+      if (!live) return;
+      setReferral(r);
+      setReferralState(r);
+    });
+    return () => {
+      live = false;
+    };
+  }, [fetchFn]);
+  const removeReferral = () => {
+    setReferral(null);
+    setReferralState(null);
+  };
 
   const [trackRef, setTrackRef] = useState("");
   const [trackError, setTrackError] = useState(false);
@@ -85,6 +106,14 @@ export function App({ fetchFn }: { fetchFn?: typeof fetch }) {
 
         {screen.name === "home" && (
           <>
+            {referral && (
+              <section className="card referral" aria-live="polite">
+                <p>{t("home.referral", { name: referral.name })}</p>
+                <button type="button" className="link-button" onClick={removeReferral}>
+                  {t("home.referral.remove")}
+                </button>
+              </section>
+            )}
             <section className="card card--hero">
               <h2 className="hero__title">{t("home.title")}</h2>
               <p className="hero__body">{t("home.body")}</p>
@@ -193,7 +222,9 @@ export function App({ fetchFn }: { fetchFn?: typeof fetch }) {
         )}
       </main>
 
-      <footer className="app-footer">{t("footer.note")}</footer>
+      <footer className="app-footer">
+        <span>{t("footer.note")}</span> · <a href="/backoffice">{t("footer.staff")}</a>
+      </footer>
     </div>
   );
 }

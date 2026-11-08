@@ -1,6 +1,7 @@
 /** Types and calls for the advisor chat API (backend/src/advisor). */
 import type { Lang } from "../i18n/I18nProvider";
 import { call, type Block, type QuoteRequest } from "./quote";
+import { withReferral } from "../referral";
 
 export type Slot = "businessKind" | "employees" | "sites" | "city" | "gstin" | "internet" | "tools";
 export type Choice = { slot: Slot; value: unknown } | { slot: "action"; value: "human" | "not_interested" | "restart" };
@@ -73,7 +74,7 @@ export interface LeadRequest {
 
 type FetchFn = typeof fetch;
 
-export const startChat = (lang: Lang, fetchFn: FetchFn = fetch) => call<AdvisorReply>(fetchFn, "/api/advisor/sessions", { lang });
+export const startChat = (lang: Lang, fetchFn: FetchFn = fetch) => call<AdvisorReply>(fetchFn, "/api/advisor/sessions", withReferral({ lang }));
 
 export const sendToAdvisor = (sessionId: string, body: { lang: Lang; text: string } | { lang: Lang; choice: Choice }, fetchFn: FetchFn = fetch) =>
   call<AdvisorReply>(fetchFn, `/api/advisor/sessions/${encodeURIComponent(sessionId)}/messages`, body);
