@@ -116,6 +116,18 @@ Office Pro: SIMs 16 July, fibre 20 July 2026) and the updates; the dashed **MOCK
 stage** button plays the installation forward on its expected dates. Note the order reference and
 use Home → **Track my order** to open it again.
 
+**Try WhatsApp and voice**: Home → **Try it on WhatsApp** → **Use a demo number** → **Open the
+chat** → send the pre-filled "Hi" (it carries the partner code when you came from a `?ref=`
+link). The **MOCK** WhatsApp bot runs the whole journey in the chat: language → the same
+advisor questions (tap the buttons, type, or tap 🎤 and speak) → the bundle card → **Buy this**
+→ consent → your name (or **DEMO: sample applicant**, e.g. K03) → photos of the documents it
+asks for (📎, or the dashed **DEMO: send K03's photo** button) → the checks → the **MOCK**
+one-time password (type it) → **Pay with UPI (MOCK)** → the tracker (**MOCK: next stage**).
+Type **status** at any time, **help** for the commands, **stop** to delete your KYC details and
+the chat. 🔊 reads replies aloud. The 🎤 mic is also on the advisor chat. Voice needs a browser
+with speech recognition (Chrome or Edge; they use their own speech service for it) and
+microphone permission; elsewhere the mic is hidden and typing works as usual.
+
 **Try the back-office**: open http://localhost:5173/backoffice (or the **Staff back-office**
 link at the bottom of Home) and pick a **MOCK** demo account (no password):
 - **Operations desk** (`ADM-01`) sees everything. In **KYC exceptions**, a K07 or K10 case
@@ -217,6 +229,14 @@ leakage column changes nothing, and that scoring from the JSON equals scikit-lea
 (rewrites the model and `docs/propensity-report.md`):
 `cd ai-service; .\.venv\Scripts\python -m app.propensity.train; cd ..`.
 
+WhatsApp and voice: `backend/tests/channels/whatsapp.test.ts` (whole journeys in chat in English
+and Hindi: K03 pass → e-sign → payment → tracker, K10 manual review approved in the back-office,
+K11 fix needed, typed details with a bad GSTIN, call back only with a yes, stop deletes the
+KYC case; no phone, OTP or message text in the log) and `frontend/src/whatsappFlow.test.tsx`
+(the simulator end to end, voice notes with a stand-in speech engine, the advisor's mic).
+`frontend/src/i18n/channelText.test.ts` checks the bot uses the app's wording word for word
+(`backend/src/channels/sharedText.ts` is generated: `cd backend; npx tsx scripts/sync-channel-text.ts; cd ..`).
+
 Back-office: `backend/tests/backoffice/` (sign-in and roles, partner attribution end to end,
 scoring inputs, filters, the past-quarter list against the CSV, KYC approve / reject / lapse,
 Active-GSTIN rule after approval) and `frontend/src/backofficeFlow.test.tsx` (the screens
@@ -262,6 +282,8 @@ against the real backend; only the Python model is replaced by a fake).
 | `GET /api/backoffice/crm-leads` | Past-quarter dropped leads (`smb_leads.csv`) by score, 25 a page; filters `segment`, `city`, `source`, `reason`, `stage`, `band`, `page` (admin, sales) |
 | `GET /api/backoffice/kyc` · `POST /api/backoffice/kyc/:caseId/review` | KYC exceptions queue; `{ decision: approved / rejected, note? }` (operations desk only) |
 | `GET /api/backoffice/attribution` | Leads, quotes, KYC cases, orders and monthly value per partner / sales code |
+| `POST /api/channels/whatsapp/messages` | **MOCK** WhatsApp webhook: header `x-wa-from: <mobile>`, body `{ text, voice? }` or `{ buttonId }` → the bot's replies (text, buttons, lists) |
+| `POST /api/channels/whatsapp/photo` | **MOCK** WhatsApp photo: header `x-wa-from`, body = the image (`image/png`, `image/jpeg`, `image/webp`, ≤ 8 MB) → read by OCR for the document the bot asked for |
 
 A `profile` is `{ "cityTier": 1 or 2, "employees": n, "sites": n, "gstin": "active" | "inactive" | "none" }`.
 

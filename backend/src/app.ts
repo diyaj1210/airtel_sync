@@ -12,6 +12,8 @@ import { StaffSessions } from "./backoffice/auth.js";
 import { loadBusinessTypes, loadCrmLeads, type CrmLead } from "./backoffice/crm.js";
 import { backofficeRouter } from "./backoffice/routes.js";
 import { BackofficeScoring } from "./backoffice/scoring.js";
+import { whatsappRouter } from "./channels/routes.js";
+import { WhatsAppBot } from "./channels/whatsapp.js";
 import { TODAY } from "./clock.js";
 import { SERVICE_NAME, SERVICE_VERSION } from "./config.js";
 import { NO_READER, type DocumentReader } from "./kyc/documents.js";
@@ -155,6 +157,23 @@ export function createApp({
   );
   app.use("/api", propensityRouter(propensity));
   app.use("/api", ordersRouter({ catalogue, quoteStore, registries, kycStore, orderStore, today: () => TODAY, logger }));
+  // MOCK WhatsApp Business API webhook (step 8): the same advisor, quote, KYC and order code.
+  const whatsapp = new WhatsAppBot({
+    engine: advisor,
+    advisorSessions,
+    leadStore,
+    catalogue,
+    quoteStore,
+    kycStore,
+    registries,
+    samples: kycSamples,
+    reader: documentReader,
+    orderStore,
+    today: () => TODAY,
+    nowMs,
+    logger,
+  });
+  app.use("/api", whatsappRouter(whatsapp));
   app.use(
     "/api",
     backofficeRouter({

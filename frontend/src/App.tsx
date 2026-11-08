@@ -10,12 +10,14 @@ import { cleanOrderId, type Order } from "./api/orders";
 import { LanguageSwitch } from "./components/LanguageSwitch";
 import { QuoteView } from "./components/QuoteView";
 import { SystemStatus } from "./components/SystemStatus";
+import { WhatsAppSim } from "./components/whatsapp/WhatsAppSim";
 import { useI18n } from "./i18n/I18nProvider";
 import { checkReferral, pendingReferralCode, setReferral, type Referral } from "./referral";
 
 type Screen =
   | { name: "home" }
   | { name: "advisor" }
+  | { name: "whatsapp" }
   | { name: "form" }
   | { name: "quote"; request: QuoteRequest; from: "form" | "advisor"; key: number }
   | { name: "accepted"; accepted: AcceptedQuote }
@@ -79,7 +81,7 @@ export function App({ fetchFn }: { fetchFn?: typeof fetch }) {
   };
 
   const back: Screen | null =
-    screen.name === "form" || screen.name === "advisor"
+    screen.name === "form" || screen.name === "advisor" || screen.name === "whatsapp"
       ? { name: "home" }
       : screen.name === "quote"
         ? screen.from === "advisor"
@@ -133,6 +135,12 @@ export function App({ fetchFn }: { fetchFn?: typeof fetch }) {
               </button>
             </section>
             <section className="card">
+              <p className="muted">{t("home.whatsappHint")}</p>
+              <button type="button" className="button-secondary" onClick={() => setScreen({ name: "whatsapp" })}>
+                {t("home.whatsapp")}
+              </button>
+            </section>
+            <section className="card">
               <p className="muted">{t("home.kycHint")}</p>
               <button type="button" className="button-secondary" onClick={() => openKyc(null)}>
                 {t("home.kyc")}
@@ -172,6 +180,8 @@ export function App({ fetchFn }: { fetchFn?: typeof fetch }) {
             <AdvisorChat onSeeQuote={(request) => openQuote(request, "advisor")} fetchFn={fetchFn} />
           </div>
         )}
+
+        {screen.name === "whatsapp" && <WhatsAppSim fetchFn={fetchFn} />}
 
         {screen.name === "form" && <BusinessForm initial={formValues} onSubmit={showQuote} fetchFn={fetchFn} />}
 
