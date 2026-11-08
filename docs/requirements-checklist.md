@@ -10,7 +10,7 @@ S6 propensity · S7 backoffice · S8 whatsapp-voice · S9 submission docs.
 
 ## 1. Problem statement (PDF p.3)
 
-- [ ] **R1.1** Digital-first acquisition **and** onboarding journey: discover the right bundle → buy it → get it activated — S2, S3, S4, S5
+- [x] **R1.1** Digital-first acquisition **and** onboarding journey: discover the right bundle → buy it → get it activated — S2, S3, S4, S5 *(done end to end in the app (S2-S5) and in the WhatsApp chat (S8): advisor → quote → KYC → MOCK e-sign → MOCK payment → tracker to activation)*
 - [x] **R1.2** Minimal human effort (self-serve end to end; humans only for exceptions) — S3, S4, S5, S7 *(S7: people step in only for the exceptions: leads the advisor could not close and KYC cases sent to manual review)*
 - [ ] **R1.3** Works on a phone (mobile-first UI) — S0 onwards *(S0: mobile-first shell, 44px tap targets, safe-area insets; every later screen must keep this)*
 - [x] **R1.4** In the owner's preferred language (at least Hindi and English, language switch) — S0 (shell), S3 (advisor replies) *(S0: English/हिंदी switch with key-parity tests; S3: the advisor understands and answers in Hindi (Devanagari, incl. Devanagari digits), English and Hinglish, switchable mid-chat; regional languages beyond Hindi are part of R4.2, S8/S9)*
@@ -53,14 +53,14 @@ S6 propensity · S7 backoffice · S8 whatsapp-voice · S9 submission docs.
 
 ## 3. Stretch goals (PDF p.3)
 
-- [ ] **R3.1** Voice **or** WhatsApp front end (we plan both: WhatsApp-style simulator + voice input) — S8
+- [x] **R3.1** Voice **or** WhatsApp front end (we plan both: WhatsApp-style simulator + voice input) — S8 *(S8 done: both. MOCK WhatsApp Business webhook with a bot that runs the whole journey in chat (advisor questions as buttons / lists, bundle card, buy, consent, KYC details or DEMO sample, document photos read by OCR, results, MOCK e-sign by OTP, MOCK UPI payment, tracker, status / help / stop / person commands, English and Hindi) on the same advisor, quote, KYC, e-sign, checkout and order code as the app; WhatsApp-style simulator in the app; voice input (browser speech recognition, en-IN / hi-IN) in the simulator and on the advisor chat, read-aloud of replies)*
 - [x] **R3.2** Back-office view for sales or partners showing **leads the advisor could not close** — S3 (records them), S7 (view) *(S7 done: `/backoffice` with MOCK staff sign-in (operations desk / field sales / channel partner); advisor leads with reason, masked phone, note, recommendation, attribution, score + next action, follow-up status and owner; filters by band, reason, segment, city, partner, status, owner; partners see only their own; past-quarter dropped leads from smb_leads.csv ranked by score with filters; KYC exceptions queue with approve / reject. S3 done: 'Talk to a person' (phone + consent) and 'Not for me' (reason) save a lead with the reason, business facts, recommendation and products asked about but not available; 'could not understand' recorded when the advisor got stuck; `GET /api/advisor/leads` (phone masked); the view is S7)*
 - [x] **R3.3** Simple **propensity score** for which leads to call — S6 (model + API), S7 (shown in back-office) *(S7 done: every advisor lead and every past-quarter lead shows score, band, next action (call within 24 h / WhatsApp nudge / nurture) and the top 3 reasons; lists sorted best first; the lists still work when the model is down. S6 done: logistic regression on the arrival details of each lead (no leakage columns), test AUC 0.670 / 5-fold CV 0.724, top 20% of leads hold 32% of activations; score 0-100 + band (top 20% = call within 24 h) + top 3 reasons; `POST /api/propensity/score`, `GET /api/propensity/leads/:id`; report in `docs/propensity-report.md`; the back-office view is S7)*
 
 ## 4. Key questions (PDF p.3) — answered in the business case and shown in the prototype
 
 - [ ] **R4.1** Q1: Which MSME segments to prioritise first, and for each a bundle with **products, price point, contract length** — `bundles-and-pricing.md`, S1, S9 *(S1 done: 4 segment bundles + Starter Lite built and priced from the catalogue)*
-- [ ] **R4.2** Q2: Needs discovery without a salesperson: conversational advisor (chat **or** voice, **Hindi and regional languages**), a few questions, recommends a bundle with a clear monthly price — S3, S8, S9 *(S3 done: chat in Hindi + English, 7 questions, bundle with a clear monthly price; voice and regional languages: S8, rollout plan in S9)*
+- [ ] **R4.2** Q2: Needs discovery without a salesperson: conversational advisor (chat **or** voice, **Hindi and regional languages**), a few questions, recommends a bundle with a clear monthly price — S3, S8, S9 *(S3 done: chat in Hindi + English, 7 questions, bundle with a clear monthly price; voice and regional languages: S8, rollout plan in S9)* *(S8 done: voice input and WhatsApp chat in Hindi and English; other regional languages are the rollout plan, S9)*
 - [ ] **R4.3** Q3: Near-instant KYC (GSTIN/Udyam lookup, OCR, DigiLocker, e-sign) compliant with the **DPDP Act 2023**: **consent**, **purpose limitation**, **data minimisation** — S4, S9 *(S4 done in the prototype: consent first, lookup before upload, OCR in about 2 s per page, MOCK e-sign, purpose stated, no Aadhaar number, images never stored; the business-case answer is S9)*
 - [ ] **R4.4** Q4: Role of the existing field force and channel partners so digital adds to them — `03-assisted-mode.md`, S7, S9 *(S7 done in the prototype: referral code `/?ref=PTR-01` kept on the advisor lead, quote, KYC case and order, so partners are credited when the customer finishes alone; partner and sales views; leads assigned to sales; the business-case answer is S9)*
 - [ ] **R4.5** Q5: Define **3–5 metrics** that matter, with **targets** — `metrics-and-rollout.md`, S9
@@ -68,7 +68,7 @@ S6 propensity · S7 backoffice · S8 whatsapp-voice · S9 submission docs.
 ## 5. Submission (PDF p.4)
 
 - [ ] **R5.1** Working prototype: **demo video ≤ 3 minutes** — S9
-- [ ] **R5.2** Working prototype: **code repository** — S0–S8
+- [x] **R5.2** Working prototype: **code repository** — S0–S8 *(S0-S8 merged to main on GitHub; every step branch kept)*
 - [ ] **R5.3** **Solution architecture diagram** with the main components and data flows — S9
 - [ ] **R5.4** **Business case in ≤ 10 slides** covering target customer, value, pricing or savings, rollout, risks — S9
 - [ ] **R5.5** **1-page note on data privacy and security** choices — S9
@@ -108,6 +108,6 @@ S6 propensity · S7 backoffice · S8 whatsapp-voice · S9 submission docs.
 
 ## 8. Team quality gates (from CLAUDE.md)
 
-- [ ] **R8.1** Automated tests: rules engine, pricing (S1, S2), advisor scenarios ≥15 (S3), KYC checks + GSTIN checksum + K01–K12 (S4), tracker dates (S5), propensity model (S6) *(S1–S7 done: back-office roles, attribution, filters and KYC review tested on the API and the screens; advisor 21 scenarios × 3 LLM modes; KYC: K01–K12 one test each, check edge cases, validators on every registry record, OCR on all 47 images; tracker dates per bundle and over 240 profiles; propensity: no-leakage scramble test, reproducible model file, served = scikit-learn, reported AUC; API and UI tests)*
-- [ ] **R8.2** Every mock (payments, e-sign, DigiLocker, WhatsApp API) works and is labelled as a mock — S4, S5, S8 *(S4 done: MOCK e-sign (DigiLocker / Aadhaar-OTP style) and MOCK registry lookups work and are labelled in the UI and the API; S5 done: MOCK payment (with a MOCK failure) and the MOCK "next stage" button, labelled; WhatsApp S8)*
+- [x] **R8.1** Automated tests: rules engine, pricing (S1, S2), advisor scenarios ≥15 (S3), KYC checks + GSTIN checksum + K01–K12 (S4), tracker dates (S5), propensity model (S6) *(S1–S8 done: WhatsApp journeys in English and Hindi, voice input; back-office roles, attribution, filters and KYC review tested on the API and the screens; advisor 21 scenarios × 3 LLM modes; KYC: K01–K12 one test each, check edge cases, validators on every registry record, OCR on all 47 images; tracker dates per bundle and over 240 profiles; propensity: no-leakage scramble test, reproducible model file, served = scikit-learn, reported AUC; API and UI tests)*
+- [x] **R8.2** Every mock (payments, e-sign, DigiLocker, WhatsApp API) works and is labelled as a mock — S4, S5, S8 *(S4 done: MOCK e-sign (DigiLocker / Aadhaar-OTP style) and MOCK registry lookups work and are labelled in the UI and the API; S5 done: MOCK payment (with a MOCK failure) and the MOCK "next stage" button, labelled; WhatsApp S8)* *(S8 done: MOCK WhatsApp Business API (webhook + simulator), labelled in the chat, the screen and the API response (`mock: true`))*
 - [ ] **R8.3** README "how to run" kept current after every step — S0–S9 *(S0: written)*

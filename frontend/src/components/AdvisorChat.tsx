@@ -6,6 +6,7 @@ import { useI18n, type Translate } from "../i18n/I18nProvider";
 import { unitLabel } from "../i18n/products";
 import { describeBlock } from "../i18n/reasons";
 import { LeadForm } from "./LeadForm";
+import { VoiceButton } from "./VoiceButton";
 
 const MAX_CHARS = 500;
 
@@ -294,6 +295,8 @@ export function AdvisorChat({ onSeeQuote, fetchFn }: { onSeeQuote: (request: Quo
             onChange={(e) => setText(e.target.value)}
             disabled={!sessionId}
           />
+          {/* Voice (step 8): the recognised words are sent like a typed message. */}
+          <VoiceButton disabled={!sessionId || sending} onText={(said) => send({ lang, text: said.slice(0, MAX_CHARS) }, `🎤 ${said.slice(0, MAX_CHARS)}`)} />
           <button type="submit" className="button-primary composer__send" disabled={!sessionId || sending || text.trim() === ""}>
             {t("advisor.send")}
           </button>
