@@ -75,6 +75,8 @@ Two **add-on features** (branch `feature/add-ons`):
   document photos encrypted at rest and deleted on a schedule, a **My data** page (withdraw,
   cancel, delete documents, "Deleted on ...") and the 1-page [privacy note](docs/privacy-note.md).
 
+Architecture diagram: [docs/architecture/](docs/architecture/README.md) (draw.io file + transparent PNG).
+
 ## How to run (Windows PowerShell)
 
 Prerequisites: **Node.js 22.12+** and **Python 3.11+** (developed on Node 22.18, Python 3.13).
