@@ -1,0 +1,541 @@
+{
+ "version": 1,
+ "model": "logistic_regression",
+ "trainedOn": "data/raw/smb_leads.csv",
+ "target": "outcome == Activated",
+ "seed": 42,
+ "regularisationC": 0.1,
+ "features": [
+  "segment",
+  "business_type",
+  "lead_source",
+  "city_tier",
+  "has_gstin",
+  "has_udyam",
+  "annual_turnover_band",
+  "current_internet",
+  "current_provider",
+  "preferred_language",
+  "employee_count",
+  "num_sites",
+  "monthly_telecom_spend_inr",
+  "products_of_interest_count"
+ ],
+ "excludedLeakage": [
+  "stage_reached",
+  "outcome",
+  "drop_reason",
+  "contacted_date",
+  "needs_assessed_date",
+  "quote_accepted_date",
+  "kyc_complete_date",
+  "activated_date",
+  "days_lead_to_activation",
+  "customer_follow_up_calls",
+  "bundle_products",
+  "monthly_bundle_value_inr",
+  "one_time_setup_inr",
+  "contract_months",
+  "churned_within_6_months",
+  "nps_score",
+  "acquisition_cost_inr"
+ ],
+ "intercept": -2.924394,
+ "baseLogit": -2.852712,
+ "categorical": {
+  "segment": {
+   "Micro retail & services": {
+    "coef": -0.405168,
+    "mean": 0.5375
+   },
+   "Professional offices": {
+    "coef": 0.121873,
+    "mean": 0.25525
+   },
+   "Small manufacturers": {
+    "coef": 0.132814,
+    "mean": 0.05625
+   },
+   "Small multi-site businesses": {
+    "coef": 0.151817,
+    "mean": 0.151
+   }
+  },
+  "business_type": {
+   "Apparel retail chain": {
+    "coef": 0.010967,
+    "mean": 0.01825
+   },
+   "Architecture studio": {
+    "coef": -0.010652,
+    "mean": 0.02625
+   },
+   "Auto-parts unit": {
+    "coef": -0.139005,
+    "mean": 0.0085
+   },
+   "Bakery": {
+    "coef": -0.070449,
+    "mean": 0.05525
+   },
+   "Bakery chain": {
+    "coef": 0.075781,
+    "mean": 0.0165
+   },
+   "Boutique": {
+    "coef": 0.051721,
+    "mean": 0.0565
+   },
+   "Budget hotel group": {
+    "coef": 0.110128,
+    "mean": 0.025
+   },
+   "CA firm": {
+    "coef": 0.022741,
+    "mean": 0.02425
+   },
+   "Coaching centre": {
+    "coef": 0.063743,
+    "mean": 0.02675
+   },
+   "Dental clinic": {
+    "coef": 0.020667,
+    "mean": 0.0265
+   },
+   "Diagnostic lab": {
+    "coef": -0.071995,
+    "mean": 0.02625
+   },
+   "Electronics retail chain": {
+    "coef": 0.018055,
+    "mean": 0.02025
+   },
+   "Food processing unit": {
+    "coef": 0.050769,
+    "mean": 0.00725
+   },
+   "Furniture workshop": {
+    "coef": -0.019725,
+    "mean": 0.00775
+   },
+   "Gym chain": {
+    "coef": 0.311856,
+    "mean": 0.018
+   },
+   "Hardware store": {
+    "coef": -0.280549,
+    "mean": 0.05275
+   },
+   "Insurance agency": {
+    "coef": -0.137874,
+    "mean": 0.02375
+   },
+   "Kirana store": {
+    "coef": -0.06367,
+    "mean": 0.0495
+   },
+   "Law office": {
+    "coef": 0.184971,
+    "mean": 0.02875
+   },
+   "Mobile repair shop": {
+    "coef": 0.152973,
+    "mean": 0.05225
+   },
+   "Optician": {
+    "coef": -0.188139,
+    "mean": 0.04925
+   },
+   "Packaging unit": {
+    "coef": 0.191301,
+    "mean": 0.00875
+   },
+   "Pharmacy": {
+    "coef": -0.051932,
+    "mean": 0.055
+   },
+   "Pharmacy chain": {
+    "coef": 0.021919,
+    "mean": 0.01875
+   },
+   "Physiotherapy clinic": {
+    "coef": -0.051006,
+    "mean": 0.025
+   },
+   "Plastic moulding unit": {
+    "coef": 0.189178,
+    "mean": 0.0075
+   },
+   "Pre-school chain": {
+    "coef": -0.172135,
+    "mean": 0.01675
+   },
+   "Printing press": {
+    "coef": -0.053081,
+    "mean": 0.00825
+   },
+   "Real estate agency": {
+    "coef": 0.167546,
+    "mean": 0.02175
+   },
+   "Restaurant chain": {
+    "coef": -0.224754,
+    "mean": 0.0175
+   },
+   "Salon": {
+    "coef": 0.011457,
+    "mean": 0.057
+   },
+   "Stationery shop": {
+    "coef": -0.101884,
+    "mean": 0.059
+   },
+   "Sweet shop": {
+    "coef": 0.135303,
+    "mean": 0.051
+   },
+   "Textile unit": {
+    "coef": -0.086623,
+    "mean": 0.00825
+   },
+   "Travel agency": {
+    "coef": -0.066268,
+    "mean": 0.026
+   }
+  },
+  "lead_source": {
+   "Channel partner": {
+    "coef": 0.007939,
+    "mean": 0.19825
+   },
+   "Field sales": {
+    "coef": 0.017835,
+    "mean": 0.34775
+   },
+   "Inbound call": {
+    "coef": 0.138304,
+    "mean": 0.09725
+   },
+   "Referral": {
+    "coef": 0.693435,
+    "mean": 0.08625
+   },
+   "Website form": {
+    "coef": -0.416674,
+    "mean": 0.201
+   },
+   "WhatsApp campaign": {
+    "coef": -0.439503,
+    "mean": 0.0695
+   }
+  },
+  "city_tier": {
+   "1": {
+    "coef": 0.244569,
+    "mean": 0.51225
+   },
+   "2": {
+    "coef": -0.243233,
+    "mean": 0.48775
+   }
+  },
+  "has_gstin": {
+   "N": {
+    "coef": -0.531874,
+    "mean": 0.29425
+   },
+   "Y": {
+    "coef": 0.53321,
+    "mean": 0.70575
+   }
+  },
+  "has_udyam": {
+   "N": {
+    "coef": -0.117279,
+    "mean": 0.4565
+   },
+   "Y": {
+    "coef": 0.118615,
+    "mean": 0.5435
+   }
+  },
+  "annual_turnover_band": {
+   "1.5 - 5 cr": {
+    "coef": -0.050385,
+    "mean": 0.2085
+   },
+   "25 - 100 cr": {
+    "coef": -0.048563,
+    "mean": 0.044
+   },
+   "40 lakh - 1.5 cr": {
+    "coef": -0.001281,
+    "mean": 0.309
+   },
+   "5 - 25 cr": {
+    "coef": 0.284708,
+    "mean": 0.1425
+   },
+   "< 40 lakh": {
+    "coef": -0.183143,
+    "mean": 0.296
+   }
+  },
+  "current_internet": {
+   "Business broadband": {
+    "coef": -0.065658,
+    "mean": 0.286
+   },
+   "Home broadband": {
+    "coef": 0.08089,
+    "mean": 0.2505
+   },
+   "Leased line": {
+    "coef": 0.145482,
+    "mean": 0.0325
+   },
+   "Mixed per site": {
+    "coef": 0.122827,
+    "mean": 0.0455
+   },
+   "Mobile hotspot": {
+    "coef": -0.229561,
+    "mean": 0.362
+   },
+   "None": {
+    "coef": -0.052643,
+    "mean": 0.0235
+   }
+  },
+  "current_provider": {
+   "Accel": {
+    "coef": 0.22278,
+    "mean": 0.07825
+   },
+   "Accel (mobile only)": {
+    "coef": 0.244242,
+    "mean": 0.302
+   },
+   "Competitor A": {
+    "coef": -0.098046,
+    "mean": 0.2415
+   },
+   "Competitor B": {
+    "coef": -0.084062,
+    "mean": 0.1475
+   },
+   "Local ISP": {
+    "coef": -0.230935,
+    "mean": 0.20725
+   },
+   "None": {
+    "coef": -0.052643,
+    "mean": 0.0235
+   }
+  },
+  "preferred_language": {
+   "Bengali": {
+    "coef": -0.085313,
+    "mean": 0.02225
+   },
+   "English": {
+    "coef": 0.133285,
+    "mean": 0.231
+   },
+   "Gujarati": {
+    "coef": 0.077717,
+    "mean": 0.04875
+   },
+   "Hindi": {
+    "coef": 0.291899,
+    "mean": 0.43125
+   },
+   "Kannada": {
+    "coef": -0.145214,
+    "mean": 0.052
+   },
+   "Malayalam": {
+    "coef": 0.126949,
+    "mean": 0.0175
+   },
+   "Marathi": {
+    "coef": -0.158445,
+    "mean": 0.09875
+   },
+   "Punjabi": {
+    "coef": -0.110832,
+    "mean": 0.018
+   },
+   "Tamil": {
+    "coef": -0.176672,
+    "mean": 0.04
+   },
+   "Telugu": {
+    "coef": 0.047962,
+    "mean": 0.0405
+   }
+  }
+ },
+ "numeric": {
+  "employee_count": {
+   "coef": -0.141819,
+   "center": 2.288761,
+   "scale": 1.179246,
+   "mean": 0.0
+  },
+  "num_sites": {
+   "coef": -0.111133,
+   "center": 0.924641,
+   "scale": 0.518157,
+   "mean": -0.0
+  },
+  "monthly_telecom_spend_inr": {
+   "coef": 0.093898,
+   "center": 7.493231,
+   "scale": 1.060373,
+   "mean": 0.0
+  },
+  "products_of_interest_count": {
+   "coef": -0.130098,
+   "center": 1.056965,
+   "scale": 0.281622,
+   "mean": 0.0
+  }
+ },
+ "scoreCuts": [
+  0.00780334,
+  0.00936106,
+  0.01030788,
+  0.01129688,
+  0.012289,
+  0.01302879,
+  0.01371543,
+  0.01442696,
+  0.015258,
+  0.01627534,
+  0.01704219,
+  0.01787023,
+  0.01866966,
+  0.01946531,
+  0.02030162,
+  0.021184,
+  0.02200717,
+  0.02278329,
+  0.02367379,
+  0.0244108,
+  0.02526262,
+  0.0261063,
+  0.02706469,
+  0.02777869,
+  0.02859028,
+  0.0295675,
+  0.03042091,
+  0.03157777,
+  0.03280038,
+  0.03390563,
+  0.03488473,
+  0.03581012,
+  0.03682986,
+  0.03811862,
+  0.03912303,
+  0.04016292,
+  0.04143953,
+  0.04277498,
+  0.04402139,
+  0.0452237,
+  0.04643658,
+  0.0474687,
+  0.04858603,
+  0.04985166,
+  0.05137411,
+  0.05264696,
+  0.05412517,
+  0.0554332,
+  0.05680373,
+  0.05811901,
+  0.05933763,
+  0.06043282,
+  0.06199774,
+  0.06316291,
+  0.0645883,
+  0.06633063,
+  0.06815703,
+  0.06973289,
+  0.07115946,
+  0.07334712,
+  0.07514879,
+  0.07681766,
+  0.07892377,
+  0.08068224,
+  0.08248952,
+  0.08424205,
+  0.08577013,
+  0.08752883,
+  0.08921058,
+  0.09116449,
+  0.09303616,
+  0.09489602,
+  0.09707028,
+  0.09935284,
+  0.10157349,
+  0.10403548,
+  0.10666222,
+  0.10934702,
+  0.11212522,
+  0.11529876,
+  0.1179954,
+  0.12058455,
+  0.1233904,
+  0.12664942,
+  0.12932735,
+  0.13261187,
+  0.13689909,
+  0.14093184,
+  0.14482799,
+  0.1490158,
+  0.15449502,
+  0.16013511,
+  0.16587736,
+  0.17697269,
+  0.18630061,
+  0.20029423,
+  0.21458276,
+  0.23390675,
+  0.2581232,
+  0.45258599
+ ],
+ "bands": {
+  "high": 80,
+  "medium": 40
+ },
+ "metrics": {
+  "rows": 5000,
+  "positives": 368,
+  "trainRows": 4000,
+  "testRows": 1000,
+  "testPositives": 74,
+  "logisticRegression": {
+   "testAuc": 0.6703,
+   "cvAucMean": 0.7243,
+   "cvAucStd": 0.0302,
+   "testTop20": {
+    "share": 0.2,
+    "activationsCaptured": 0.324,
+    "activationRateTop": 0.12,
+    "activationRateAll": 0.074
+   }
+  },
+  "gradientBoosting": {
+   "testAuc": 0.6691,
+   "testTop20": {
+    "share": 0.2,
+    "activationsCaptured": 0.365,
+    "activationRateTop": 0.135,
+    "activationRateAll": 0.074
+   }
+  },
+  "leakageCheck": {
+   "acquisitionCostAloneAuc": 0.9023
+  }
+ }
+}

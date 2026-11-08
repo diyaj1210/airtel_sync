@@ -13,6 +13,7 @@ describe("loadConfig", () => {
       aiServiceTimeoutMs: 2000,
       advisorTimeoutMs: 15000,
       kycOcrTimeoutMs: 60000,
+      propensityTimeoutMs: 10000,
     });
   });
 

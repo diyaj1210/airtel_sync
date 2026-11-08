@@ -18,6 +18,7 @@ import { KycCaseStore } from "./kyc/store.js";
 import type { Logger } from "./logger.js";
 import { ordersRouter } from "./orders/routes.js";
 import { OrderStore } from "./orders/store.js";
+import { NO_PROPENSITY, propensityRouter, type PropensityApi } from "./propensity/client.js";
 import { quoteRouter } from "./quote/routes.js";
 import type { QuoteStore } from "./quote/store.js";
 
@@ -51,6 +52,8 @@ export interface AppDeps {
   kycStore?: KycCaseStore;
   /** Orders placed after the MOCK payment (in memory). */
   orderStore?: OrderStore;
+  /** Lead propensity model (in the ai-service). Default: none, the endpoints answer 503. */
+  propensity?: PropensityApi;
 }
 
 export function createApp({
@@ -69,6 +72,7 @@ export function createApp({
   documentReader = NO_READER,
   kycStore = new KycCaseStore(() => TODAY),
   orderStore = new OrderStore(),
+  propensity = NO_PROPENSITY,
 }: AppDeps): Express {
   const gate = new LlmGate(advisorLlm, (kind) => logger.warn("advisor LLM unavailable, answering by rules", { kind }), nowMs);
   const advisor = new AdvisorEngine({ catalogue, cities, gate, logger });
@@ -134,6 +138,7 @@ export function createApp({
       orderFor: (caseId) => orderStore.forCase(caseId)?.orderId ?? null,
     }),
   );
+  app.use("/api", propensityRouter(propensity));
   app.use("/api", ordersRouter({ catalogue, quoteStore, registries, kycStore, orderStore, today: () => TODAY, logger }));
 
   app.use((_req, res) => {

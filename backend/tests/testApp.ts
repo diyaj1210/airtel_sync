@@ -11,6 +11,7 @@ import { loadSamples } from "../src/kyc/samples.js";
 import { KycCaseStore } from "../src/kyc/store.js";
 import { createLogger } from "../src/logger.js";
 import { OrderStore } from "../src/orders/store.js";
+import type { PropensityApi } from "../src/propensity/client.js";
 import { QuoteStore } from "../src/quote/store.js";
 
 export const catalogue = loadCatalogue();
@@ -21,7 +22,7 @@ export const kycSamples = loadSamples();
 /** App wired with the real data files, a capturing logger and a stub ai-service check. */
 export function makeTestApp(
   ai: AiServiceStatus = { status: "ok", version: "0.1.0", latencyMs: 1 },
-  options: { advisorLlm?: AdvisorLlm; documentReader?: DocumentReader; nowMs?: () => number } = {},
+  options: { advisorLlm?: AdvisorLlm; documentReader?: DocumentReader; nowMs?: () => number; propensity?: PropensityApi } = {},
 ) {
   const logLines: string[] = [];
   const logger = createLogger({ service: "backend", level: "info", sink: (l) => logLines.push(l) });
@@ -41,6 +42,7 @@ export function makeTestApp(
     kycSamples,
     kycStore,
     orderStore,
+    propensity: options.propensity,
     documentReader: options.documentReader,
     nowMs: options.nowMs,
   });

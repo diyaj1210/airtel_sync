@@ -41,8 +41,12 @@ quote, complete KYC, pay (MOCK) and track the order on their phone**.
 Every product and price comes from the backend **catalogue rules engine**. The AI helper
 (Gemini, optional) only reads the owner's messages and rewords the engine's facts; every sentence
 it writes is checked before it is shown, and without a key the advisor runs in **basic mode** on
-its own rules. KYC decisions are made by fixed rules too (no AI). Next: the propensity score
-(step 6) and the back-office (step 7).
+its own rules. KYC decisions are made by fixed rules too (no AI).
+
+Behind the scenes (step 6) a **lead propensity model** scores how likely a lead is to activate
+(0-100, with the top 3 reasons): logistic regression trained on `smb_leads.csv` without any
+column that gives the outcome away; test AUC **0.670** (report: [docs/propensity-report.md](docs/propensity-report.md)).
+The back-office that shows it to sales comes in step 7.
 
 ## How to run (Windows PowerShell)
 
@@ -185,6 +189,12 @@ the ai-service tests (`tests/test_kyc.py`, about 80 s) run the real OCR on all 4
 if that file no longer matches. After changing the OCR code, rewrite it with
 `cd ai-service; .\.venv\Scripts\python -m app.kyc.fixture; cd ..`.
 
+Propensity model: `ai-service/tests/test_propensity.py` retrains it and checks the committed
+`ai-service/models/propensity.json` is exactly what the data produces, that scrambling every
+leakage column changes nothing, and that scoring from the JSON equals scikit-learn. To retrain
+(rewrites the model and `docs/propensity-report.md`):
+`cd ai-service; .\.venv\Scripts\python -m app.propensity.train; cd ..`.
+
 ### Try the API (backend running)
 
 | Endpoint | What it does |
@@ -212,6 +222,9 @@ if that file no longer matches. After changing the OCR code, rewrite it with
 | `DELETE /api/kyc/cases/:id` | Withdraw consent: the case and all its data are deleted |
 | `GET /api/lookup/gstin/:gstin` · `GET /api/lookup/udyam/:number` | **MOCK** registry lookups (`mock_gstin_registry.csv`, `mock_udyam_registry.csv`), numbers masked |
 | `GET /api/kyc/samples` · `/api/kyc/samples/:id/documents/:docType` | DEMO: the 12 sample applicants and their document images |
+| `GET /api/propensity/model` | Lead propensity model card: inputs, excluded leakage columns, test AUC, bands |
+| `POST /api/propensity/score` | `{ leads: [{ id?, lead: { lead_source: "Referral", has_gstin: "Y", ... } }] }` (1-500; missing inputs count as average) → score 0-100, band, top 3 reasons |
+| `GET /api/propensity/leads/:leadId` | Score of a lead in `smb_leads.csv`, e.g. `L00001` |
 | `GET /api/orders/checkout/:caseId` | What is due now for a signed KYC case (setup + first month) and whether it can be paid |
 | `POST /api/orders` | `{ caseId, method: "upi" or "card" or "netbanking", simulateFailure? }` → **MOCK** payment → order (`ORD-XXXXXXXX`); `402` for a simulated failure, `409` with the reason if it cannot be paid |
 | `GET /api/orders/:orderId` | Order status: stages with done / expected dates, each product's expected date, updates (no personal data) |
