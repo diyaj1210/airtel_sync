@@ -1,5 +1,5 @@
 /** Types and calls for the staff back-office (backend/src/backoffice). Every call but the account list and sign-in sends the MOCK staff token. */
-import type { KycCase } from "./kyc";
+import type { Blocker, KycCase, ReadinessState } from "./kyc";
 import type { Segment } from "./quote";
 
 export type StaffRole = "admin" | "sales" | "partner";
@@ -96,6 +96,22 @@ export interface QueueItem {
   quote: { quoteId: string; bundle: string; monthlyInr: number } | null;
   orderId: string | null;
   case: KycCase;
+  /** One-Sitting Completion: state, percentage and the blockers (with the owner's answers). */
+  readiness: { state: ReadinessState; percent: number; blockers: Blocker[] } | null;
+  /** Document photos still stored (encrypted); the operations desk can view them. */
+  documentsStored: string[];
+}
+
+export interface Metrics {
+  journeys: number;
+  withdrawn: number;
+  completed: number;
+  completedInOneSitting: number;
+  oneSittingPercent: number;
+  blockers: { total: number; resolved: number; autoResolved: number; autoResolvedPercent: number };
+  alternativesAccepted: number;
+  states: Record<string, number>;
+  definition: string;
 }
 export interface KycQueue {
   total: number;
@@ -164,3 +180,18 @@ export const kycQueue = (token: string, filters: Record<string, string>, fetchFn
 export const reviewCase = (token: string, caseId: string, decision: "approved" | "rejected", note: string, fetchFn: FetchFn = fetch) =>
   send<QueueItem>(fetchFn, "POST", `/api/backoffice/kyc/${encodeURIComponent(caseId)}/review`, token, { decision, ...(note.trim() ? { note: note.trim() } : {}) });
 export const attribution = (token: string, fetchFn: FetchFn = fetch) => send<AttributionSummary>(fetchFn, "GET", "/api/backoffice/attribution", token);
+export const metrics = (token: string, fetchFn: FetchFn = fetch) => send<Metrics>(fetchFn, "GET", "/api/backoffice/metrics", token);
+export const runRetention = (token: string, asOf: string, fetchFn: FetchFn = fetch) =>
+  send<{ asOf: string; files: number; cases: number }>(fetchFn, "POST", "/api/backoffice/retention/run", token, { asOf });
+
+/** A stored document photo (operations desk only), as a blob for an on-screen preview. */
+export async function documentPhoto(token: string, caseId: string, doc: string, fetchFn: FetchFn = fetch): Promise<Blob> {
+  let res: Response;
+  try {
+    res = await fetchFn(`/api/backoffice/kyc/${encodeURIComponent(caseId)}/documents/${encodeURIComponent(doc)}`, { headers: { authorization: `Bearer ${token}` } });
+  } catch {
+    throw new BackofficeError(0, "network");
+  }
+  if (!res.ok) throw new BackofficeError(res.status, "document_not_found");
+  return res.blob();
+}

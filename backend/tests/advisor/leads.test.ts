@@ -39,7 +39,7 @@ describe("LeadStore", () => {
       leadId: "AL-0000000A",
       createdOn: "2026-07-15",
       reason: "price_too_high",
-      note: "my GSTIN 27XUIX******1ZP",
+      note: "my GSTIN 27XU********1ZP",
       phone: null,
       callbackConsent: false,
       lang: "hi",

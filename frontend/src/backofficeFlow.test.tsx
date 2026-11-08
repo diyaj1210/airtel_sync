@@ -6,7 +6,7 @@ import { parseCsv } from "../../backend/src/catalogue/csv";
 import { DEFAULT_LEADS_PATH } from "../../backend/src/cities";
 import type { PropensityApi } from "../../backend/src/propensity/client";
 import { recordedReader, sampleImage, samples } from "../../backend/tests/kyc/helpers";
-import { CONSENT_VERSION } from "./api/kyc";
+import { CONSENT_PURPOSES, CONSENT_VERSION } from "./api/kyc";
 import { App } from "./App";
 import { BackOffice } from "./components/backoffice/BackOffice";
 import { KycResult } from "./components/kyc/KycDocuments";
@@ -199,7 +199,7 @@ describe("back-office", () => {
 
   it("KYC exceptions: the operations desk approves a case with a note and the owner can sign; a reject needs a note", async () => {
     const start = async (sampleId: string) => {
-      const c = await post("/api/kyc/cases", { consent: { accepted: true, version: CONSENT_VERSION }, lang: "en" });
+      const c = await post("/api/kyc/cases", { consent: { accepted: true, version: CONSENT_VERSION, purposes: [...CONSENT_PURPOSES] }, lang: "en" });
       const caseId = c.caseId as string;
       await backend.fetchFn(`/api/kyc/cases/${caseId}/business`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ sampleId }) });
       for (const d of samples.get(sampleId)!.documents) {
@@ -233,7 +233,7 @@ describe("back-office", () => {
   });
 
   it("the owner sees a rejection and the reviewer's note (English and Hindi)", async () => {
-    const c = await post("/api/kyc/cases", { consent: { accepted: true, version: CONSENT_VERSION }, lang: "en" });
+    const c = await post("/api/kyc/cases", { consent: { accepted: true, version: CONSENT_VERSION, purposes: [...CONSENT_PURPOSES] }, lang: "en" });
     const caseId = c.caseId as string;
     await backend.fetchFn(`/api/kyc/cases/${caseId}/business`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ sampleId: "K10" }) });
     for (const d of samples.get("K10")!.documents) {

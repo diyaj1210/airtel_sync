@@ -10,7 +10,9 @@ import { DEFAULT_GSTIN_REGISTRY_PATH, loadRegistries, type Registries } from "./
 import { loadSamples, type SampleApplicant } from "./kyc/samples.js";
 import { createLogger } from "./logger.js";
 import { createAiServicePropensity } from "./propensity/client.js";
+import { DEFAULT_DOCUMENT_DIR, FileVault, parseKey } from "./privacy/vault.js";
 import { QuoteStore } from "./quote/store.js";
+import { randomBytes } from "node:crypto";
 
 const envLoaded = loadRootEnv();
 const config = loadConfig();
@@ -41,6 +43,17 @@ try {
   process.exit(1);
 }
 
+// Encrypted document photos: key from .env; without one, a random key for this run only.
+let documentKey: Buffer;
+try {
+  documentKey = parseKey(process.env.DOCUMENT_ENCRYPTION_KEY) ?? randomBytes(32);
+} catch (err) {
+  logger.error("invalid DOCUMENT_ENCRYPTION_KEY", { error: err });
+  process.exit(1);
+}
+if (!process.env.DOCUMENT_ENCRYPTION_KEY?.trim()) logger.warn("DOCUMENT_ENCRYPTION_KEY not set: using a random key for this run (photos are unreadable after a restart)");
+const documentVault = new FileVault(process.env.DOCUMENT_STORE_DIR?.trim() || DEFAULT_DOCUMENT_DIR, documentKey);
+
 const app = createApp({
   logger,
   checkAiService: () => checkAiService(config.aiServiceUrl, config.aiServiceTimeoutMs),
@@ -52,6 +65,9 @@ const app = createApp({
   kycSamples,
   documentReader: createAiServiceReader(config.aiServiceUrl, config.kycOcrTimeoutMs),
   propensity: createAiServicePropensity(config.aiServiceUrl, config.propensityTimeoutMs),
+  documentVault,
+  // Retention job every 6 hours (also runnable from the back-office).
+  retentionEveryMs: 6 * 60 * 60 * 1000,
 });
 
 const server = app.listen(config.port, () => {

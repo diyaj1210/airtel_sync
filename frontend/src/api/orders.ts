@@ -1,4 +1,5 @@
 /** Types and calls for checkout (MOCK payment) and the order tracker (backend/src/orders). */
+import type { Blocker } from "./kyc";
 
 export const STAGES = ["kyc_verified", "order_placed", "installation_scheduled", "installed", "activated"] as const;
 export type Stage = (typeof STAGES)[number];
@@ -33,6 +34,10 @@ export interface Order {
   readyOn: string;
   activated: boolean;
   notifications: { id: number; stage: Stage; on: string; params: Record<string, string> }[];
+  /** Consent withdrawn before activation: the order is stopped. */
+  stopped?: { on: string; reason: "consent_withdrawn" } | null;
+  /** The application's blockers still open (One-Sitting Completion). */
+  blockers?: Blocker[];
 }
 
 export class OrderError extends Error {

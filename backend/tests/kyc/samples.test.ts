@@ -44,9 +44,9 @@ describe("sample applicants K01-K12 (kyc-validation.md)", () => {
     for (const s of samples.values()) if (s.id !== "K05") expect(s.documents).toHaveLength(4);
   });
 
-  it("K01 Vindhya Tours & Travels: cancelled GSTIN -> blocked, manual review; blank Udyam certificate rejected", () => {
-    const r = expectResult("K01", "manual_review", ["GSTIN_INACTIVE"]);
-    expect(r.issues[0]!.params).toEqual({ status: "Cancelled" });
+  it("K01 Vindhya Tours & Travels: cancelled GSTIN caught -> GSTIN-only products blocked (not a KYC failure); blank Udyam certificate rejected", () => {
+    const r = expectResult("K01", "pass", []);
+    expect(r.warnings).toContainEqual({ code: "GSTIN_INACTIVE", severity: "warning", params: { status: "Cancelled" } });
     expect(r.gstin).toBe("cancelled");
     expect(r.gstinProductsAllowed).toBe(false);
     expect(r.documents.udyam_certificate).toEqual({ need: "not_needed", state: "rejected" });
@@ -72,9 +72,10 @@ describe("sample applicants K01-K12 (kyc-validation.md)", () => {
     expect(r.gstin).toBe("active"); // the registry still knows the GSTIN
   });
 
-  it("K05 Balaji Realty LLP: Udyam certificate missing -> fix needed (upload it or enter the number)", () => {
-    const r = expectResult("K05", "fix_needed", ["DOC_MISSING"]);
-    expect(r.issues[0]).toEqual({ code: "DOC_MISSING", severity: "fix", doc: "udyam_certificate", params: { orNumber: true } });
+  it("K05 Balaji Realty LLP: Udyam certificate missing -> caught, optional: pass, with the number lookup offered", () => {
+    const r = expectResult("K05", "pass", []);
+    expect(codes(r.warnings)).toContain("UDYAM_NOT_PROVIDED");
+    expect(r.documents.udyam_certificate.need).toBe("optional");
     // ... and entering the lead's Udyam number for lookup instead clears it.
     const fixed = run("K05", { udyamNumber: "UDYAM-KL-00-5521886" });
     expect(fixed.status).toBe("pass");

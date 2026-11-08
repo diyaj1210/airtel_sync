@@ -68,7 +68,7 @@ describe("errors and logging", () => {
     expect(JSON.parse(lines[0]!)).toMatchObject({
       msg: "request",
       method: "GET",
-      path: "/api/lookup/27XUIX******1ZP",
+      path: "/api/lookup/27XU********1ZP",
       status: 404,
     });
   });

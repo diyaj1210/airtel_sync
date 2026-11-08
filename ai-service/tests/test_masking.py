@@ -7,20 +7,20 @@ from app.masking import MAX_LOGGED_STRING, mask_identifiers, mask_value
 @pytest.mark.parametrize(
     "text, expected",
     [
-        ("27XUIXG0767D1ZP", "27XUIX******1ZP"),
-        ("19EOGXH4115Y1ZL", "19EOGX******1ZL"),  # letter O inside a real registry GSTIN
-        ("27PZSXS1936O1ZH", "27PZSX******1ZH"),
-        ("GSTIN on doc: 08YKZXS8189L1ZO", "GSTIN on doc: 08YKZX******1ZO"),  # K06, bad checksum
-        ("/api/gstin/32TZAXB5481U1Z1?x=1", "/api/gstin/32TZAX******1Z1?x=1"),
-        ("UDYAM-KL-00-5521886", "UDYAM-KL-00-****886"),
-        ("ID SYN-ID-346190", "ID SYN-ID-***190"),
+        ("27XUIXG0767D1ZP", "27XU********1ZP"),
+        ("19EOGXH4115Y1ZL", "19EO********1ZL"),  # letter O inside a real registry GSTIN
+        ("27PZSXS1936O1ZH", "27PZ********1ZH"),
+        ("GSTIN on doc: 08YKZXS8189L1ZO", "GSTIN on doc: 08YK********1ZO"),  # K06, bad checksum
+        ("/api/gstin/32TZAXB5481U1Z1?x=1", "/api/gstin/32TZ********1Z1?x=1"),
+        ("UDYAM-KL-00-5521886", "UDYAM-**-**-***1886"),
+        ("ID SYN-ID-346190", "ID SYN-ID-**6190"),
         ("1234 5678 9012", "**********9012"),
         ("123456789012", "********9012"),
         ("call 9876543210", "call ******3210"),
         ("call +91 9876543210", "call **********3210"),
         ("PAN ABCDE1234F", "PAN AB*******F"),
         ("owner neha.kaur@example.com", "owner n***@example.com"),
-        ("27XUIXG0767D1ZP / UDYAM-MH-00-9516696", "27XUIX******1ZP / UDYAM-MH-00-****696"),
+        ("27XUIXG0767D1ZP / UDYAM-MH-00-9516696", "27XU********1ZP / UDYAM-**-**-***6696"),
     ],
 )
 def test_mask_identifiers(text, expected):
@@ -58,7 +58,7 @@ def test_mask_value_redacts_sensitive_keys_case_insensitively():
 
 def test_mask_value_nested_and_arrays():
     masked = mask_value({"applicant": {"gstins": ["27XUIXG0767D1ZP"], "udyam": "UDYAM-MH-00-9516696"}})
-    assert masked == {"applicant": {"gstins": ["27XUIX******1ZP"], "udyam": "UDYAM-MH-00-****696"}}
+    assert masked == {"applicant": {"gstins": ["27XU********1ZP"], "udyam": "UDYAM-**-**-***6696"}}
 
 
 def test_mask_value_omits_long_strings_and_bytes():
@@ -68,7 +68,7 @@ def test_mask_value_omits_long_strings_and_bytes():
 
 def test_mask_value_errors_and_scalars():
     assert mask_value({"e": ValueError("bad 27XUIXG0767D1ZP"), "n": 3, "b": True, "z": None}) == {
-        "e": {"name": "ValueError", "message": "bad 27XUIX******1ZP"},
+        "e": {"name": "ValueError", "message": "bad 27XU********1ZP"},
         "n": 3,
         "b": True,
         "z": None,

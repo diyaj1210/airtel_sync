@@ -44,8 +44,12 @@ export interface Plan {
   readyOn: string;
 }
 
-/** Expected dates for an order placed on `placedOn`, from the accepted quote's selected lines. */
-export function planOrder(quote: Quote, placedOn: string, kycVerifiedOn: string): Plan {
+/**
+ * The shared timeline: each selected line's expected date from `start`, and when the whole bundle
+ * is ready (its slowest line). Used by the order tracker and by the readiness card ("after
+ * verification, ready in about N days"), so both always give the same dates.
+ */
+export function computeTimeline(quote: Quote, start: string): { lines: OrderLine[]; readyDays: number; readyOn: string; slowest: OrderLine } {
   const selected = quote.items.filter((i) => i.selected);
   if (selected.length === 0) throw new Error("An order needs at least one product");
   const lines = selected.map((i) => ({
@@ -54,10 +58,15 @@ export function planOrder(quote: Quote, placedOn: string, kycVerifiedOn: string)
     qty: i.qty,
     unit: i.unit,
     installDays: i.installDays,
-    expectedOn: addDays(placedOn, i.installDays),
+    expectedOn: addDays(start, i.installDays),
   }));
-  const readyDays = Math.max(...lines.map((l) => l.installDays));
-  const readyOn = addDays(placedOn, readyDays);
+  const slowest = lines.reduce((a, b) => (b.installDays > a.installDays ? b : a));
+  return { lines, readyDays: slowest.installDays, readyOn: slowest.expectedOn, slowest };
+}
+
+/** Expected dates for an order placed on `placedOn`, from the accepted quote's selected lines. */
+export function planOrder(quote: Quote, placedOn: string, kycVerifiedOn: string): Plan {
+  const { lines, readyDays, readyOn } = computeTimeline(quote, placedOn);
   const scheduledOn = addDays(placedOn, Math.min(SCHEDULING_DAYS, readyDays));
   return {
     lines,

@@ -1,25 +1,32 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { gstinProblem, KycError, listSamples, udyamProblem, type BusinessInput, type Sample } from "../../api/kyc";
+import { gstinProblem, KycError, listSamples, udyamProblem, type Sample } from "../../api/kyc";
 import { useI18n } from "../../i18n/I18nProvider";
 import type { MessageKey } from "../../i18n/en";
 
-type Errors = Partial<Record<"applicantName" | "gstin" | "udyamNumber" | "form", string>>;
+type Errors = Partial<Record<"gstin" | "udyamNumber" | "form", string>>;
+
+/** The business identifiers looked up first (public registries), before consent and before any name or document. */
+export interface Identifiers {
+  gstin: string | null;
+  hasUdyam: boolean;
+  udyamNumber: string | null;
+}
 
 /**
- * Applicant name, GSTIN (or "no GSTIN"), Udyam yes/no (+ optional number). The server looks the
- * numbers up in the registries. A DEMO box fills in one of the 12 sample applicants instead.
+ * Step 1 of KYC (lookup first): GSTIN (or "no GSTIN") and Udyam yes/no (+ optional number). These
+ * are business identifiers in public registries; the person's name and documents come only after
+ * consent. A DEMO box picks one of the 12 sample applicants instead.
  */
 export function KycBusiness({
   onSave,
   onSample,
   fetchFn,
 }: {
-  onSave: (input: BusinessInput) => Promise<void>;
+  onSave: (input: Identifiers) => Promise<void>;
   onSample: (sampleId: string) => Promise<void>;
   fetchFn?: typeof fetch;
 }) {
   const { t } = useI18n();
-  const [name, setName] = useState("");
   const [gstin, setGstin] = useState("");
   const [noGstin, setNoGstin] = useState(false);
   const [hasUdyam, setHasUdyam] = useState<boolean | null>(null);
@@ -50,7 +57,6 @@ export function KycBusiness({
         for (const d of err.details) {
           if (d.field === "gstin") next.gstin = t(`kyc.business.gstin.${d.problem}` as MessageKey);
           else if (d.field === "udyamNumber") next.udyamNumber = t("kyc.business.udyam.format");
-          else if (d.field === "applicantName") next.applicantName = t("kyc.business.nameError");
         }
         setErrors(next);
       } else {
@@ -64,7 +70,6 @@ export function KycBusiness({
   const submit = (e: FormEvent) => {
     e.preventDefault();
     const next: Errors = {};
-    if (!/^[\p{L}][\p{L} .'-]{1,79}$/u.test(name.trim())) next.applicantName = t("kyc.business.nameError");
     if (!noGstin) {
       const problem = gstinProblem(gstin);
       if (problem) next.gstin = t(`kyc.business.gstin.${problem}`);
@@ -75,7 +80,6 @@ export function KycBusiness({
     if (Object.keys(next).length > 0) return;
     void run(() =>
       onSave({
-        applicantName: name.trim(),
         gstin: noGstin ? null : gstin.trim(),
         hasUdyam: hasUdyam === true,
         udyamNumber: hasUdyam && udyam.trim() ? udyam.trim() : null,
@@ -90,27 +94,6 @@ export function KycBusiness({
           {t("kyc.business.title")}
         </h2>
         <p className="muted">{t("kyc.business.intro")}</p>
-
-        <div className="field">
-          <label className="field__label" htmlFor="kyc-name">
-            {t("kyc.business.name")}
-          </label>
-          <input
-            id="kyc-name"
-            className="input"
-            autoComplete="name"
-            maxLength={80}
-            value={name}
-            aria-invalid={errors.applicantName ? true : undefined}
-            aria-describedby={errors.applicantName ? "kyc-name-error" : undefined}
-            onChange={(e) => setName(e.target.value)}
-          />
-          {errors.applicantName && (
-            <p id="kyc-name-error" className="field-error">
-              {errors.applicantName}
-            </p>
-          )}
-        </div>
 
         <div className="field">
           <label className="field__label" htmlFor="kyc-gstin">

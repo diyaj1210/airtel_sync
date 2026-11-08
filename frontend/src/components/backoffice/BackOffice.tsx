@@ -6,13 +6,14 @@ import { AttributionTab } from "./AttributionTab";
 import { CrmTab } from "./CrmTab";
 import { KycQueueTab } from "./KycQueueTab";
 import { LeadsTab } from "./LeadsTab";
+import { MetricsTab } from "./MetricsTab";
 import { LoadError, staffNames } from "./common";
 
-type Tab = "leads" | "crm" | "kyc" | "partners";
+type Tab = "leads" | "crm" | "kyc" | "partners" | "metrics";
 /** What each role may open (the backend enforces the same). */
 const TABS: Record<StaffRole, Tab[]> = {
-  admin: ["leads", "crm", "kyc", "partners"],
-  sales: ["leads", "crm", "partners"],
+  admin: ["leads", "crm", "kyc", "partners", "metrics"],
+  sales: ["leads", "crm", "partners", "metrics"],
   partner: ["leads", "partners"],
 };
 
@@ -133,6 +134,7 @@ export function BackOffice({ fetchFn }: { fetchFn?: typeof fetch }) {
             {tab === "crm" && <CrmTab token={session.token} names={names} onExpired={expired} fetchFn={fetchFn} />}
             {tab === "kyc" && <KycQueueTab token={session.token} names={names} onExpired={expired} fetchFn={fetchFn} />}
             {tab === "partners" && <AttributionTab token={session.token} staff={session.staff} onExpired={expired} fetchFn={fetchFn} />}
+            {tab === "metrics" && <MetricsTab token={session.token} staff={session.staff} onExpired={expired} fetchFn={fetchFn} />}
           </>
         )}
       </main>

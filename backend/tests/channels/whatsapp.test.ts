@@ -92,7 +92,7 @@ describe("WhatsApp channel (MOCK): the whole journey in chat", () => {
     expect(kycStore.size).toBe(1);
     expect(ids(last(name))).toContain("sample:K03");
     let replies = await p.tap("sample:K03");
-    expect(replies[0]!.text).toMatch(/MOCK registry lookup: \*.+\*, GSTIN \d{2}[A-Z0-9]{4}\*{6}[A-Z0-9]{3}, status \*Active\*/);
+    expect(replies[0]!.text).toMatch(/MOCK registry lookup: \*.+\*, GSTIN \d{2}[A-Z0-9]{2}\*{8}[A-Z0-9]{3}, status \*Active\*/);
     replies = await sendPhotos(p, "K03", replies);
     expect(allText(replies)).toContain("All checks passed");
     const otp = /\*(\d{6})\*/.exec(last(replies).text)?.[1];
@@ -209,7 +209,7 @@ describe("WhatsApp channel (MOCK): the whole journey in chat", () => {
     expect(leadStore.list().find((l) => l.reason === "price_too_high")).toMatchObject({ phone: null, callbackConsent: false });
   });
 
-  it("stop withdraws consent: the KYC case and the chat are deleted", async () => {
+  it("stop withdraws consent: the KYC data and the chat are deleted (the consent record stays as proof)", async () => {
     const { api, kycStore } = setup();
     const p = phone(api);
     await p.say("hi");
@@ -219,7 +219,10 @@ describe("WhatsApp channel (MOCK): the whole journey in chat", () => {
     await p.tap("consent:yes");
     expect(kycStore.size).toBe(1);
     expect((await p.say("STOP"))[0]!.text).toContain("deleted");
-    expect(kycStore.size).toBe(0);
+    const c = kycStore.list()[0]!;
+    expect(c.withdrawn).toEqual({ on: "2026-07-15", cancelled: false });
+    expect(c.consent).toMatchObject({ channel: "whatsapp", withdrawnOn: "2026-07-15" });
+    expect(c.business).toBeNull();
     // A new message starts from the beginning.
     expect(ids((await p.say("hi"))[0]!)).toEqual(["lang:en", "lang:hi"]);
   });

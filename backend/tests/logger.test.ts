@@ -34,8 +34,8 @@ describe("createLogger", () => {
     expect(line).not.toContain("9516696");
     expect(line).not.toContain("RAW-BYTES");
     expect(JSON.parse(line)).toMatchObject({
-      msg: "lookup 27XUIX******1ZP",
-      udyam: "UDYAM-MH-00-****696",
+      msg: "lookup 27XU********1ZP",
+      udyam: "UDYAM-**-**-***6696",
       document: "[REDACTED]",
     });
   });

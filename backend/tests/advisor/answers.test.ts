@@ -54,7 +54,7 @@ describe("applyUpdates (every value is validated before the rules engine sees it
   });
 
   it("masks identifiers in a business label and refuses markup", () => {
-    expect(cleanLabel("Shop 27XUIXG0767D1ZP")).toBe("Shop 27XUIX******1ZP");
+    expect(cleanLabel("Shop 27XUIXG0767D1ZP")).toBe("Shop 27XU********1ZP");
     expect(cleanLabel("<script>")).toBeUndefined();
     expect(cleanLabel("x".repeat(41))).toBeUndefined();
   });

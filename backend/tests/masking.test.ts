@@ -3,28 +3,28 @@ import { MAX_LOGGED_STRING, maskIdentifiers, maskValue } from "../src/masking.js
 
 describe("maskIdentifiers", () => {
   it("masks a registry GSTIN, keeping state + 4 PAN chars and the last 3", () => {
-    expect(maskIdentifiers("27XUIXG0767D1ZP")).toBe("27XUIX******1ZP");
+    expect(maskIdentifiers("27XUIXG0767D1ZP")).toBe("27XU********1ZP");
   });
 
   it("masks GSTINs that contain the letter O (real registry values)", () => {
-    expect(maskIdentifiers("19EOGXH4115Y1ZL")).toBe("19EOGX******1ZL");
-    expect(maskIdentifiers("27PZSXS1936O1ZH")).toBe("27PZSX******1ZH");
+    expect(maskIdentifiers("19EOGXH4115Y1ZL")).toBe("19EO********1ZL");
+    expect(maskIdentifiers("27PZSXS1936O1ZH")).toBe("27PZ********1ZH");
   });
 
   it("masks an invalid GSTIN read from a document too (K06, failed checksum)", () => {
-    expect(maskIdentifiers("GSTIN on doc: 08YKZXS8189L1ZO")).toBe("GSTIN on doc: 08YKZX******1ZO");
+    expect(maskIdentifiers("GSTIN on doc: 08YKZXS8189L1ZO")).toBe("GSTIN on doc: 08YK********1ZO");
   });
 
   it("masks GSTINs inside a URL path", () => {
-    expect(maskIdentifiers("/api/gstin/32TZAXB5481U1Z1?x=1")).toBe("/api/gstin/32TZAX******1Z1?x=1");
+    expect(maskIdentifiers("/api/gstin/32TZAXB5481U1Z1?x=1")).toBe("/api/gstin/32TZ********1Z1?x=1");
   });
 
   it("masks Udyam numbers (district code 00)", () => {
-    expect(maskIdentifiers("UDYAM-KL-00-5521886")).toBe("UDYAM-KL-00-****886");
+    expect(maskIdentifiers("UDYAM-KL-00-5521886")).toBe("UDYAM-**-**-***1886");
   });
 
   it("masks signatory ID numbers", () => {
-    expect(maskIdentifiers("ID SYN-ID-346190")).toBe("ID SYN-ID-***190");
+    expect(maskIdentifiers("ID SYN-ID-346190")).toBe("ID SYN-ID-**6190");
   });
 
   it("masks Aadhaar-like 12-digit numbers with or without spaces", () => {
@@ -52,7 +52,7 @@ describe("maskIdentifiers", () => {
 
   it("masks several identifiers in one string", () => {
     expect(maskIdentifiers("27XUIXG0767D1ZP / UDYAM-MH-00-9516696")).toBe(
-      "27XUIX******1ZP / UDYAM-MH-00-****696",
+      "27XU********1ZP / UDYAM-**-**-***6696",
     );
   });
 });
@@ -79,7 +79,7 @@ describe("maskValue", () => {
 
   it("masks identifiers in nested objects and arrays", () => {
     const masked = maskValue({ applicant: { gstins: ["27XUIXG0767D1ZP"], udyam: "UDYAM-MH-00-9516696" } });
-    expect(masked).toEqual({ applicant: { gstins: ["27XUIX******1ZP"], udyam: "UDYAM-MH-00-****696" } });
+    expect(masked).toEqual({ applicant: { gstins: ["27XU********1ZP"], udyam: "UDYAM-**-**-***6696" } });
   });
 
   it("omits very long strings (raw documents / base64) and binary data", () => {
@@ -89,7 +89,7 @@ describe("maskValue", () => {
 
   it("masks error messages and keeps numbers, booleans and null", () => {
     expect(maskValue({ e: new Error("bad 27XUIXG0767D1ZP"), n: 3, b: true, z: null })).toEqual({
-      e: { name: "Error", message: "bad 27XUIX******1ZP" },
+      e: { name: "Error", message: "bad 27XU********1ZP" },
       n: 3,
       b: true,
       z: null,

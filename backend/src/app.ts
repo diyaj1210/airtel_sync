@@ -19,6 +19,8 @@ import { SERVICE_NAME, SERVICE_VERSION } from "./config.js";
 import { NO_READER, type DocumentReader } from "./kyc/documents.js";
 import type { Registries } from "./kyc/registry.js";
 import { kycRouter } from "./kyc/routes.js";
+import { KycService } from "./kyc/service.js";
+import { MemoryVault, type DocumentVault } from "./privacy/vault.js";
 import type { SampleApplicant } from "./kyc/samples.js";
 import { KycCaseStore } from "./kyc/store.js";
 import type { Logger } from "./logger.js";
@@ -58,6 +60,10 @@ export interface AppDeps {
   kycStore?: KycCaseStore;
   /** Orders placed after the MOCK payment (in memory). */
   orderStore?: OrderStore;
+  /** Encrypted storage of document photos (default: in memory, encrypted with a random key). */
+  documentVault?: DocumentVault;
+  /** Run the retention job this often (ms); 0 = only by hand (tests). */
+  retentionEveryMs?: number;
   /** Lead propensity model (in the ai-service). Default: none, the endpoints answer 503. */
   propensity?: PropensityApi;
   /** MOCK staff sign-ins for the back-office (in memory). */
@@ -86,6 +92,8 @@ export function createApp({
   documentReader = NO_READER,
   kycStore = new KycCaseStore(() => TODAY),
   orderStore = new OrderStore(),
+  documentVault = new MemoryVault(),
+  retentionEveryMs = 0,
   propensity = NO_PROPENSITY,
   staffSessions,
   crmLeads,
@@ -139,9 +147,26 @@ export function createApp({
   app.use("/api", catalogueRouter(catalogue));
   app.use("/api", quoteRouter(catalogue, cities, quoteStore));
   app.use("/api", advisorRouter(advisor, advisorSessions, leadStore, llmStatus));
+  const kycService = new KycService({
+    store: kycStore,
+    vault: documentVault,
+    registries,
+    catalogue,
+    quoteStore,
+    cities,
+    today: () => TODAY,
+    logger,
+    orderFor: (caseId) => orderStore.forCase(caseId)?.orderId ?? null,
+    stopOrder: (caseId, on) => orderStore.stop(caseId, on),
+  });
+  if (retentionEveryMs > 0) {
+    // Deletes document photos whose retention period has ended (privacy/retention.ts).
+    setInterval(() => kycService.runRetention(TODAY), retentionEveryMs).unref();
+  }
   app.use(
     "/api",
     kycRouter({
+      service: kycService,
       catalogue,
       quoteStore,
       registries,
@@ -156,7 +181,7 @@ export function createApp({
     }),
   );
   app.use("/api", propensityRouter(propensity));
-  app.use("/api", ordersRouter({ catalogue, quoteStore, registries, kycStore, orderStore, today: () => TODAY, logger }));
+  app.use("/api", ordersRouter({ catalogue, quoteStore, registries, kycStore, orderStore, today: () => TODAY, logger, kycService, nowMs }));
   // MOCK WhatsApp Business API webhook (step 8): the same advisor, quote, KYC and order code.
   const whatsapp = new WhatsAppBot({
     engine: advisor,
@@ -168,6 +193,7 @@ export function createApp({
     registries,
     samples: kycSamples,
     reader: documentReader,
+    kycService,
     orderStore,
     today: () => TODAY,
     nowMs,
@@ -188,6 +214,7 @@ export function createApp({
       scoring: new BackofficeScoring(propensity, businessTypes ?? defaultLeadsData().businessTypes),
       today: () => TODAY,
       logger,
+      kycService,
     }),
   );
 

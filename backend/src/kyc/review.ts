@@ -56,5 +56,18 @@ export function applyReview(evaluation: KycEvaluation, review: KycReview | null)
 
 /** The case's checks with the reviewer's decision applied (used by KYC, e-sign and checkout). */
 export function evaluateCase(c: KycCase, registries: Registries, today: string): CaseEvaluation {
-  return applyReview(evaluateKyc({ business: c.business, documents: c.documents, submitted: c.submitted }, registries, today), c.review);
+  return applyReview(
+    evaluateKyc(
+      {
+        business: c.business,
+        documents: c.documents,
+        submitted: c.submitted,
+        certGstinConfirmed: c.certGstinConfirmed,
+        signatoryAuthorised: !!c.authorisation?.signed,
+      },
+      registries,
+      today,
+    ),
+    c.review,
+  );
 }

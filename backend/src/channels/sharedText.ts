@@ -8,7 +8,7 @@ export const SHARED_TEXT = {
     "kyc.consent.howTitle": "How",
     "kyc.consent.how": "We look up your GSTIN and Udyam number in the registries, read your documents automatically (OCR) and compare the details. Numbers are shown masked.",
     "kyc.consent.keepTitle": "How long we keep it",
-    "kyc.consent.keep": "Document photos are read and deleted straight away; they are never stored. The details read from them and the check result are kept with your application for as long as your contract runs.",
+    "kyc.consent.keep": "Document photos are stored encrypted and deleted 30 days after verification, or at once if you withdraw. The verification result is kept for your contract plus 8 years (audit). These periods are proposed, to be confirmed by legal.",
     "kyc.gstStatus.Active": "Active",
     "kyc.gstStatus.Cancelled": "Cancelled",
     "kyc.gstStatus.Suspended": "Suspended",
@@ -68,7 +68,10 @@ export const SHARED_TEXT = {
     "track.stage.activated": "Activated",
     "kyc.result.rejected": "Not approved",
     "kyc.result.rejected.body": "A person from our team could not approve these details. Read the note below: you can upload other documents, or we will call you.",
-    "kyc.result.reviewNote": "Note from our team: {note}"
+    "kyc.result.reviewNote": "Note from our team: {note}",
+    "kyc.issue.UDYAM_NOT_PROVIDED": "Udyam: not given. It is optional; add your Udyam number if you want it checked as extra verification.",
+    "kyc.issue.CERT_GSTIN_CORRECTED": "{doc}: the GSTIN printed on it was taken as your registered GSTIN, as you confirmed.",
+    "kyc.issue.SIGNATORY_AUTHORISED": "{doc}: the registered owner authorised this person to sign (MOCK e-sign)."
   },
   "hi": {
     "kyc.consent.whatTitle": "हम क्या लेते हैं",
@@ -78,7 +81,7 @@ export const SHARED_TEXT = {
     "kyc.consent.howTitle": "कैसे",
     "kyc.consent.how": "हम आपका GSTIN और उद्यम नंबर रजिस्ट्री में देखते हैं, आपके दस्तावेज़ अपने-आप पढ़ते हैं (OCR) और जानकारी मिलाते हैं। नंबर छिपाकर (मास्क करके) दिखाए जाते हैं।",
     "kyc.consent.keepTitle": "हम इसे कितने समय रखते हैं",
-    "kyc.consent.keep": "दस्तावेज़ों की फ़ोटो पढ़ते ही हटा दी जाती हैं; वे कभी सेव नहीं होतीं। उनसे पढ़ी गई जानकारी और जाँच का नतीजा आपके आवेदन के साथ तब तक रखा जाता है जब तक आपका कॉन्ट्रैक्ट चलता है।",
+    "kyc.consent.keep": "दस्तावेज़ों की फ़ोटो एन्क्रिप्ट करके रखी जाती हैं और जाँच के 30 दिन बाद, या सहमति वापस लेते ही, मिटा दी जाती हैं। जाँच का नतीजा आपके अनुबंध के दौरान और उसके 8 साल बाद तक (ऑडिट) रखा जाता है। ये अवधियाँ प्रस्तावित हैं, क़ानूनी पुष्टि बाक़ी है।",
     "kyc.gstStatus.Active": "सक्रिय",
     "kyc.gstStatus.Cancelled": "रद्द",
     "kyc.gstStatus.Suspended": "निलंबित",
@@ -138,6 +141,9 @@ export const SHARED_TEXT = {
     "track.stage.activated": "चालू हो गया",
     "kyc.result.rejected": "मंज़ूर नहीं हुआ",
     "kyc.result.rejected.body": "हमारी टीम का व्यक्ति इन जानकारियों को मंज़ूर नहीं कर सका। नीचे लिखी बात पढ़ें: आप दूसरे दस्तावेज़ अपलोड कर सकते हैं, या हम आपको फ़ोन करेंगे।",
-    "kyc.result.reviewNote": "हमारी टीम की ओर से: {note}"
+    "kyc.result.reviewNote": "हमारी टीम की ओर से: {note}",
+    "kyc.issue.UDYAM_NOT_PROVIDED": "उद्यम: नहीं दिया गया। यह वैकल्पिक है; अतिरिक्त जाँच के लिए अपना उद्यम नंबर जोड़ सकते हैं।",
+    "kyc.issue.CERT_GSTIN_CORRECTED": "{doc}: आपकी पुष्टि के अनुसार, इस पर छपा GSTIN नंबर आपका पंजीकृत GSTIN नंबर माना गया।",
+    "kyc.issue.SIGNATORY_AUTHORISED": "{doc}: पंजीकृत मालिक ने इस व्यक्ति को हस्ताक्षर की मंज़ूरी दी (MOCK ई-साइन)।"
   }
 } as const;

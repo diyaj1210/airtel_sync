@@ -6,7 +6,8 @@ README (`data/raw/README.md`), each mapped to the build step in
 
 Tick a box only when the step's code and tests are merged and the item is demonstrated. Steps:
 S0 scaffold · S1 catalogue-rules · S2 quote · S3 advisor · S4 kyc · S5 tracker ·
-S6 propensity · S7 backoffice · S8 whatsapp-voice · S9 submission docs.
+S6 propensity · S7 backoffice · S8 whatsapp-voice · S9 submission docs · A1/A2 add-ons (One-Sitting
+Completion, privacy inside the journey; branch `feature/add-ons`).
 
 ## 1. Problem statement (PDF p.3)
 
@@ -61,7 +62,7 @@ S6 propensity · S7 backoffice · S8 whatsapp-voice · S9 submission docs.
 
 - [ ] **R4.1** Q1: Which MSME segments to prioritise first, and for each a bundle with **products, price point, contract length** — `bundles-and-pricing.md`, S1, S9 *(S1 done: 4 segment bundles + Starter Lite built and priced from the catalogue)*
 - [ ] **R4.2** Q2: Needs discovery without a salesperson: conversational advisor (chat **or** voice, **Hindi and regional languages**), a few questions, recommends a bundle with a clear monthly price — S3, S8, S9 *(S3 done: chat in Hindi + English, 7 questions, bundle with a clear monthly price; voice and regional languages: S8, rollout plan in S9)* *(S8 done: voice input and WhatsApp chat in Hindi and English; other regional languages are the rollout plan, S9)*
-- [ ] **R4.3** Q3: Near-instant KYC (GSTIN/Udyam lookup, OCR, DigiLocker, e-sign) compliant with the **DPDP Act 2023**: **consent**, **purpose limitation**, **data minimisation** — S4, S9 *(S4 done in the prototype: consent first, lookup before upload, OCR in about 2 s per page, MOCK e-sign, purpose stated, no Aadhaar number, images never stored; the business-case answer is S9)*
+- [ ] **R4.3** Q3: Near-instant KYC (GSTIN/Udyam lookup, OCR, DigiLocker, e-sign) compliant with the **DPDP Act 2023**: **consent**, **purpose limitation**, **data minimisation** — S4, S9 *(S4 done in the prototype: consent first, lookup before upload, OCR in about 2 s per page, MOCK e-sign, purpose stated, no Aadhaar number, images were never stored in S4; since A2 they are stored encrypted for 30 days after verification; the business-case answer is S9)* *(A2 done: lookup first (registry before consent, nothing stored), consent listing only the documents still needed with five separate purposes and a separate optional marketing consent, server-side enforcement (403), My data with withdraw / cancel / delete; the business-case answer is S9)*
 - [ ] **R4.4** Q4: Role of the existing field force and channel partners so digital adds to them — `03-assisted-mode.md`, S7, S9 *(S7 done in the prototype: referral code `/?ref=PTR-01` kept on the advisor lead, quote, KYC case and order, so partners are credited when the customer finishes alone; partner and sales views; leads assigned to sales; the business-case answer is S9)*
 - [ ] **R4.5** Q5: Define **3–5 metrics** that matter, with **targets** — `metrics-and-rollout.md`, S9
 
@@ -71,7 +72,7 @@ S6 propensity · S7 backoffice · S8 whatsapp-voice · S9 submission docs.
 - [x] **R5.2** Working prototype: **code repository** — S0–S8 *(S0-S8 merged to main on GitHub; every step branch kept)*
 - [ ] **R5.3** **Solution architecture diagram** with the main components and data flows — S9
 - [ ] **R5.4** **Business case in ≤ 10 slides** covering target customer, value, pricing or savings, rollout, risks — S9
-- [ ] **R5.5** **1-page note on data privacy and security** choices — S9
+- [x] **R5.5** **1-page note on data privacy and security** choices — S9 *(A2: [docs/privacy-note.md](privacy-note.md), one page, written from the implemented code)*
 
 ## 6. Data and catalogue rules (data/raw/README.md, PDF p.4)
 
@@ -96,18 +97,36 @@ S6 propensity · S7 backoffice · S8 whatsapp-voice · S9 submission docs.
 
 ## 7. Privacy expectations (data/raw/README.md, PDF key question 3)
 
-- [ ] **R7.1** Treat the data as real customer data — all steps
+- [ ] **R7.1** Treat the data as real customer data — all steps *(A2: KYC data minimised, encrypted, masked and deleted on schedule; data/raw read-only)*
 - [x] **R7.2** Collect only what each step needs (data minimisation; lookup before upload) — S3, S4 *(S3 done: the advisor keeps only business facts (a typed GSTIN becomes 'has a GSTIN', the number is never stored); the LLM gets business facts + the message with identifiers masked; a phone is asked only for a call back, with consent, and shown masked. S4: GSTIN/Udyam looked up first, so certificates are asked for only when the lookup fails; no Aadhaar number; document images never stored, only the fields the checks need)*
 - [x] **R7.3** Clear consent notice **before** KYC (what, why, how long, how to withdraw) — S4
 - [x] **R7.4** Mask identifiers (GSTIN, Udyam, ID numbers) **in the UI** — S4, S5, S7 *(S5: orders hold no identifiers; S7: back-office shows phones and GSTINs masked, the past-quarter list carries no GSTIN / Udyam numbers at all, reviewer notes masked (tested on API responses and screens). S4 done: KYC API and screens show GSTIN, Udyam, ID and consumer numbers only masked (tested on API responses and rendered screens); S5/S7 screens to come)*
 - [x] **R7.5** Mask identifiers **in logs**; never log raw documents — S0 (logger), S4 *(S0 done: masking JSON loggers in backend + ai-service, incl. uvicorn access logs; documents/bodies never logged; tested. S4: OCR logs only document type, readable, label count and time; tested on both services, and the live run's 261 log lines had no identifier, name or address)*
-- [ ] **R7.6** Explain how long documents are retained (shown on consent screen + privacy note) — S4, S9 *(S4 done: the consent screen says images are deleted once read and the results are kept for the contract; privacy note S9)*
-- [ ] **R7.7** Purpose limitation: KYC data used only for onboarding/compliance — S4, S9 *(S4 done: purposes recorded with the consent (identity verification, regulatory compliance) and stated on the consent screen; no other part of the app uses KYC data; privacy note S9)*
+- [x] **R7.6** Explain how long documents are retained (shown on consent screen + privacy note) — S4, S9 *(S4 done: the consent screen says images are deleted once read and the results are kept for the contract; privacy note S9)* *(A2 done: periods in one config (backend/src/privacy/retention.ts, proposed), shown on the consent screen and My data, enforced by the retention job; privacy note written)*
+- [x] **R7.7** Purpose limitation: KYC data used only for onboarding/compliance — S4, S9 *(S4 done: purposes recorded with the consent (identity verification, regulatory compliance) and stated on the consent screen; no other part of the app uses KYC data; privacy note S9)* *(A2 done: five named purposes in the consent record; identity documents used for nothing else, no marketing (separate optional consent))*
 - [x] **R7.8** No secrets in the repo: `.env` ignored, `.env.example` provided — S0
-- [ ] **R7.9** The 1-page privacy note covers all of the above — S9
+- [x] **R7.9** The 1-page privacy note covers all of the above — S9 *(A2 done: docs/privacy-note.md covers collection per step, purposes, minimisation, consent, masking, encryption, retention, withdrawal and deletion, access control)*
 
 ## 8. Team quality gates (from CLAUDE.md)
 
 - [x] **R8.1** Automated tests: rules engine, pricing (S1, S2), advisor scenarios ≥15 (S3), KYC checks + GSTIN checksum + K01–K12 (S4), tracker dates (S5), propensity model (S6) *(S1–S8 done: WhatsApp journeys in English and Hindi, voice input; back-office roles, attribution, filters and KYC review tested on the API and the screens; advisor 21 scenarios × 3 LLM modes; KYC: K01–K12 one test each, check edge cases, validators on every registry record, OCR on all 47 images; tracker dates per bundle and over 240 profiles; propensity: no-leakage scramble test, reproducible model file, served = scikit-learn, reported AUC; API and UI tests)*
 - [x] **R8.2** Every mock (payments, e-sign, DigiLocker, WhatsApp API) works and is labelled as a mock — S4, S5, S8 *(S4 done: MOCK e-sign (DigiLocker / Aadhaar-OTP style) and MOCK registry lookups work and are labelled in the UI and the API; S5 done: MOCK payment (with a MOCK failure) and the MOCK "next stage" button, labelled; WhatsApp S8)* *(S8 done: MOCK WhatsApp Business API (webhook + simulator), labelled in the chat, the screen and the API response (`mock: true`))*
 - [ ] **R8.3** README "how to run" kept current after every step — S0–S9 *(S0: written)*
+
+## 9. Add-on features (A1, A2: `feature/add-ons`)
+
+- [x] **A1.1** Readiness check before any upload, re-run after every upload or fix; states Not possible / Partner help / Needs review / Almost ready / Ready by precedence *(backend/src/readiness/assess.ts; lookup preview and case view)*
+- [x] **A1.2** Readiness percentage over the applicable groups, Udyam never counted; "not an approval or risk" shown *(card in the app, Hindi + English)*
+- [x] **A1.3** Blocker object with an action, kept on the application, shown in the app, the tracker and the back-office *(tested: every blocker of every sample has an action in both languages)*
+- [x] **A1.4** K01-K12 each give the expected state + blocker + fix *(backend/tests/readiness/readiness.test.ts; UI tests for K01, K04, K06, K07, K10, K11)*
+- [x] **A1.5** "Did you mean ...?" only when the near-miss record has the certificate's name; never another business's data *(tested both ways)*
+- [x] **A1.6** Save and return with the reference, blockers kept *(Home -> Continue my application)*
+- [x] **A1.7** Back-office: Needs-review items with blocker details and the owner's answers; metrics: one sitting %, blockers auto-resolved, alternatives accepted
+- [x] **A2.1** Lookup-first screen; only documents the lookup could not satisfy are requested and listed in the consent
+- [x] **A2.2** Consent: five sections, Hindi and English, before any upload; separate optional marketing consent, unticked
+- [x] **A2.3** Server-side enforcement: KYC writes and uploads without a valid consent record -> 403 *(tested)*
+- [x] **A2.4** One masking utility (GSTIN 4 + 3, Udyam / ID / phone last 4) for UI, API and logs; logs redact automatically *(tested in backend and ai-service)*
+- [x] **A2.5** Document photos encrypted at rest (key from .env), outside public folders, viewable only by the operations desk *(tested: encrypted on disk, wrong key fails, role check, view logged)*
+- [x] **A2.6** Retention config (proposed), retention job (scheduled + manual DEMO trigger), deletion log; My data page with withdraw / cancel / delete and "Deleted on" *(tested end to end)*
+- [x] **A2.7** Withdrawal stops an order that is not activated; completed records stay *(tested)*
+- [x] **A2.8** docs/privacy-note.md, one page, matching the code

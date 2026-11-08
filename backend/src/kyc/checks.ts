@@ -53,7 +53,11 @@ export type IssueCode =
   | "ADDRESS_PROOF_TOO_OLD"
   | "BILL_DATE_IN_FUTURE"
   | "ADDRESS_MISMATCH"
-  | "BILL_NAME_MISMATCH";
+  | "BILL_NAME_MISMATCH"
+  // One-Sitting Completion (add-on): never blocking, shown so nothing is hidden.
+  | "UDYAM_NOT_PROVIDED"
+  | "CERT_GSTIN_CORRECTED"
+  | "SIGNATORY_AUTHORISED";
 
 /** Params never hold an identifier (GSTIN, Udyam, ID numbers): they are shown to the owner. */
 export interface KycIssue {
@@ -86,6 +90,13 @@ export interface KycInput {
   documents: Partial<Record<DocType, DocumentReading>>;
   /** The owner pressed "Check my documents": from then on a missing document is a problem. */
   submitted: boolean;
+  /**
+   * The owner confirmed (one tap, "Did you mean ...?") that the GSTIN printed on the certificate is
+   * a misprint of their registered GSTIN: the certificate is then compared as if it showed that GSTIN.
+   */
+  certGstinConfirmed?: { printed: string; gstin: string } | null;
+  /** The registered owner e-signed an authorisation for the person signing (MOCK link, K10). */
+  signatoryAuthorised?: boolean;
 }
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -141,11 +152,14 @@ export function evaluateKyc(input: KycInput, registries: Registries, today: stri
   if (business.gstin) {
     gst = registries.gst.get(business.gstin) ?? null;
     gstinState = gst ? (gst.status.toLowerCase() as GstinState) : "not_found";
-    if (gst && gst.status !== "Active") add("GSTIN_INACTIVE", "review", undefined, { status: gst.status });
+    // Not a KYC failure by itself: it blocks only products that need an Active GSTIN (checked
+    // at checkout and by the readiness check, which offers the bundle without them).
+    if (gst && gst.status !== "Active") add("GSTIN_INACTIVE", "warning", undefined, { status: gst.status });
   }
   // Lookup first, upload only what is missing: the certificate is needed only if the lookup failed.
   need.gst_certificate = business.gstin === null ? "not_needed" : gst ? "optional" : "required";
-  need.udyam_certificate = !business.hasUdyam ? "not_needed" : business.udyamNumber ? "optional" : "required";
+  // No catalogue product requires Udyam: it is optional, used only as extra verification.
+  need.udyam_certificate = !business.hasUdyam ? "not_needed" : "optional";
 
   // ---- 10-11. Every uploaded document: the right kind, and readable ----
   const usable: Partial<Record<DocType, DocumentReading>> = {};
@@ -168,7 +182,10 @@ export function evaluateKyc(input: KycInput, registries: Registries, today: stri
   let certAgrees = false;
   if (usable.gst_certificate && business.gstin) {
     const certGstin = fixOcrGstin(field("gst_certificate", "gstin") ?? "");
-    if (certGstin !== business.gstin) {
+    const confirmed = input.certGstinConfirmed;
+    const corrected = certGstin !== business.gstin && !!confirmed && confirmed.printed === certGstin && confirmed.gstin === business.gstin;
+    if (corrected) add("CERT_GSTIN_CORRECTED", "warning", "gst_certificate");
+    if (certGstin !== business.gstin && !corrected) {
       add("CERT_GSTIN_MISMATCH", "fix", "gst_certificate", { checksumValid: checkGstin(certGstin).ok });
     } else {
       certAgrees = true;
@@ -205,12 +222,13 @@ export function evaluateKyc(input: KycInput, registries: Registries, today: stri
     const printed = field("udyam_certificate", "udyamNumber");
     if (!printed) {
       // A certificate without a registration number proves nothing (K01).
-      if (business.hasUdyam && !business.udyamNumber) add("UDYAM_NUMBER_BLANK", "fix", "udyam_certificate");
+      if (business.hasUdyam && !business.udyamNumber) add("UDYAM_NUMBER_BLANK", "warning", "udyam_certificate");
       else reject("UDYAM_CERT_REJECTED", "udyam_certificate", { reason: "blank_number" });
     } else {
       const fixed = fixOcrUdyam(printed);
-      if (!checkUdyam(fixed).ok) add("UDYAM_FORMAT", "fix", "udyam_certificate");
-      else if (business.udyamNumber && fixed !== business.udyamNumber) add("UDYAM_NUMBER_MISMATCH", "fix", "udyam_certificate");
+      // Udyam is optional: its problems are shown, never blocking.
+      if (!checkUdyam(fixed).ok) add("UDYAM_FORMAT", "warning", "udyam_certificate");
+      else if (business.udyamNumber && fixed !== business.udyamNumber) add("UDYAM_NUMBER_MISMATCH", "warning", "udyam_certificate");
       else if (!business.udyamNumber) {
         udyamNumber = fixed;
         udyamFromCert = true;
@@ -221,21 +239,21 @@ export function evaluateKyc(input: KycInput, registries: Registries, today: stri
   if (udyamNumber) {
     udyam = registries.udyam.get(udyamNumber) ?? null;
     if (!udyam) {
-      add("UDYAM_NOT_FOUND", "fix", udyamFromCert ? "udyam_certificate" : undefined, { source: udyamFromCert ? "certificate" : "entered" });
+      add("UDYAM_NOT_FOUND", "warning", udyamFromCert ? "udyam_certificate" : undefined, { source: udyamFromCert ? "certificate" : "entered" });
     } else {
       if ((legalName || tradeName) && !anyNameMatches(udyam.enterpriseName, [tradeName, legalName])) {
-        add("UDYAM_NAME_MISMATCH", "review");
+        add("UDYAM_NAME_MISMATCH", "warning");
       }
-      if (gst && simplifyName(udyam.state) !== simplifyName(gst.state)) add("UDYAM_STATE_MISMATCH", "review");
+      if (gst && simplifyName(udyam.state) !== simplifyName(gst.state)) add("UDYAM_STATE_MISMATCH", "warning");
       const certNumber = fixOcrUdyam(field("udyam_certificate", "udyamNumber") ?? "");
       if (usable.udyam_certificate && certNumber === udyamNumber) {
         const printedName = field("udyam_certificate", "enterpriseName");
         if (printedName && !namesMatch(printedName, udyam.enterpriseName)) {
-          add("CERT_DETAILS_MISMATCH", "review", "udyam_certificate", { field: "enterpriseName" });
+          add("CERT_DETAILS_MISMATCH", "warning", "udyam_certificate", { field: "enterpriseName" });
         }
         for (const [name, registryValue] of [["state", udyam.state], ["city", udyam.city]] as const) {
           const printed = field("udyam_certificate", name);
-          if (printed && !sameText(printed, registryValue)) add("CERT_DETAILS_MISMATCH", "review", "udyam_certificate", { field: name });
+          if (printed && !sameText(printed, registryValue)) add("CERT_DETAILS_MISMATCH", "warning", "udyam_certificate", { field: name });
         }
         // Soft only: the registration date differs on every certificate in this data, clean ones too.
         const printedDate = field("udyam_certificate", "registrationDate");
@@ -259,7 +277,8 @@ export function evaluateKyc(input: KycInput, registries: Registries, today: stri
     const name = field("signatory_id", "name");
     if (!anyNameMatches(name, [business.applicantName, proprietor])) {
       // For an LLP / company the legal name has no person: the applicant's name decides (K10).
-      add("SIGNATORY_NOT_VERIFIED", "review", "signatory_id", { constitution: constitution ?? "unknown", hasProprietor: proprietor !== null });
+      if (input.signatoryAuthorised) add("SIGNATORY_AUTHORISED", "warning", "signatory_id");
+      else add("SIGNATORY_NOT_VERIFIED", "review", "signatory_id", { constitution: constitution ?? "unknown", hasProprietor: proprietor !== null });
     }
   }
 
@@ -289,9 +308,11 @@ export function evaluateKyc(input: KycInput, registries: Registries, today: stri
   for (const doc of DOC_TYPES) {
     if (need[doc] !== "required" || documents[doc]) continue;
     if (doc === "gst_certificate") continue; // reported as GSTIN_NOT_FOUND above
-    if (input.submitted) add("DOC_MISSING", "fix", doc, doc === "udyam_certificate" ? { orNumber: true } : {});
+    if (input.submitted) add("DOC_MISSING", "fix", doc);
     else waiting = true;
   }
+  // Udyam said "yes" but neither a number nor a certificate: optional, so only a suggestion (K05).
+  if (business.hasUdyam && !business.udyamNumber && !documents.udyam_certificate) add("UDYAM_NOT_PROVIDED", "warning");
   if (!input.submitted && business.gstin && !gst && !documents.gst_certificate) waiting = true;
 
   const status: KycStatus = waiting

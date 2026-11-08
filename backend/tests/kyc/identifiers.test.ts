@@ -82,9 +82,9 @@ describe("Udyam number (check 9)", () => {
 
 describe("masks", () => {
   it("hides the middle of identifiers, keeping the length", () => {
-    expect(maskGstin("27XUIXG0767D1ZP")).toBe("27XUIX******1ZP");
-    expect(maskUdyam("UDYAM-MH-00-9516696")).toBe("UDYAM-MH-00-****696");
-    expect(maskNumber("SYN-ID-447889")).toBe("**********889");
+    expect(maskGstin("27XUIXG0767D1ZP")).toBe("27XU********1ZP");
+    expect(maskUdyam("UDYAM-MH-00-9516696")).toBe("UDYAM-**-**-***6696");
+    expect(maskNumber("SYN-ID-447889")).toBe("SYN-ID-**7889");
     expect(maskNumber("12")).toBe("**");
     expect(maskGstin("odd")).toBe("***");
   });

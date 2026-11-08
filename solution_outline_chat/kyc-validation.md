@@ -1,10 +1,12 @@
 # Smart KYC – Validation Design (Key question 3)
 
 ## Flow (lookup first, upload only what's missing)
-1. **Consent screen** (DPDP Act 2023): what we collect, why, how long we keep it, how to withdraw.
-2. Owner enters **GSTIN** → format + checksum check → mock registry lookup → legal name, trade name,
-   address, constitution, status auto-filled.
-3. Owner enters **Udyam number** (optional) → mock Udyam lookup.
+1. Owner enters **GSTIN** (format + checksum check) and **Udyam number** (optional) → mock registry
+   lookups (public business registries, nothing stored) → "Business record found" + the documents
+   still needed + the One-Sitting Completion preview (add-on, see 05-one-sitting-and-privacy.md).
+2. **Consent screen** (DPDP Act 2023), five sections: what we collect (only what is still needed),
+   why (five separate purposes), what is optional, how long we keep it, how to withdraw.
+3. Owner gives their name (as on the ID).
 4. Upload **signatory ID** and **address proof** (and certificates only if lookup failed).
 5. OCR extracts fields → cross-checks below → result: **Pass / Fix needed / Manual review**.
 6. e-sign (mocked, DigiLocker-style) → order released.
@@ -38,16 +40,16 @@ Verified by reading every image and cross-checking registries, checksum and `smb
 
 | Applicant (lead) | Issue found | Expected result |
 |---|---|---|
-| K01 Vindhya Tours & Travels (L00045) | Registry GSTIN status **Cancelled**; Udyam certificate submitted with **blank** reg. number (lead has `has_udyam = N`) | **Blocked → manual review** (no GSTIN-only products); Udyam cert rejected |
+| K01 Vindhya Tours & Travels (L00045) | Registry GSTIN status **Cancelled**; Udyam certificate submitted with **blank** reg. number (lead has `has_udyam = N`) | **GSTIN-only products blocked** (checks pass; with such a product in the quote: "Not possible as chosen", one tap to the bundle without it); Udyam cert not used (optional, not blocking) |
 | K02 Harmony Dental Care (L01287) | GST cert **rotated/skewed**; data matches registry after deskew | **Pass** (OCR robustness) |
 | K03 Ganesh Woodcraft (L03571) | None | **Pass** |
 | K04 Saffron Dental Care LLP (L01014) | GST cert **blurred**, GSTIN unreadable (registry: `27PZSXS1936O1ZH`) | **Fix needed:** re-upload |
-| K05 Balaji Realty LLP (L04014) | **Udyam certificate missing** (lead has Udyam `UDYAM-KL-00-5521886`, which exists in the registry) | **Fix needed:** upload Udyam cert, or enter the number for lookup |
-| K06 Saffron Unisex Salon (L00115) | GSTIN on doc `08YKZXS8189L1ZO` **fails checksum** and is not in registry; registry has `08YKZXS5189L1ZO` (8 vs 5) | **Fix needed:** GSTIN mismatch |
+| K05 Balaji Realty LLP (L04014) | **Udyam certificate missing** (lead has Udyam `UDYAM-KL-00-5521886`, which exists in the registry) | **Pass**: Udyam is optional (no product needs it); adding the number for lookup is offered |
+| K06 Saffron Unisex Salon (L00115) | GSTIN on doc `08YKZXS8189L1ZO` **fails checksum** and is not in registry; registry has `08YKZXS5189L1ZO` (8 vs 5) | **Fix needed:** GSTIN mismatch → "Did you mean …?" (the near-miss record has the certificate's name) → one-tap confirm → Pass |
 | K07 Neelgiri Physio Clinic (L03349) | GST cert legal name "Neha Banerjee (Prop. **Shri** Physio Clinic)" ≠ registry legal name "(Prop. **Neelgiri** Physio Clinic)" and ≠ trade name | **Manual review:** name mismatch (possible tampering) |
 | K08 Green Leaf Legal Associates (L03473) | None | **Pass** |
 | K09 Kaveri Insurance Advisors (L04779) | None | **Pass** |
-| K10 Kaveri Stays LLP (L04525) | Signatory ID **Nisha Arora** ("Owner") ≠ lead owner **Fatima Menon**; LLP legal name has no person to match | **Manual review:** signatory not verified (needs authorisation letter) |
+| K10 Kaveri Stays LLP (L04525) | Signatory ID **Nisha Arora** ("Owner") ≠ lead owner **Fatima Menon**; LLP legal name has no person to match | **Manual review:** signatory not verified → MOCK signing link to the registered owner; once signed → Pass |
 | K11 Trinity Bake House Pvt Ltd (L03485) | Electricity bill dated 2025-10-31 = **257 days old** (> 90) | **Fix needed:** recent address proof |
 | K12 Star Electronics (L03558) | None blocking | **Pass** (soft warning only) |
 
@@ -60,10 +62,15 @@ Soft warnings (non-blocking, shown to the reviewer):
 - No other checks fail: all signatory IDs are valid well beyond 2026-07-15, and every bill
   address matches the GST principal place of business.
 
-## Privacy choices (for the 1-page note)
-- Collect only what each step needs; no Aadhaar number stored.
-- Mask identifiers in UI and logs (e.g. `27XUIX******1ZP`, same length as the GSTIN).
-- Encrypt documents at rest; delete raw images after verification (e.g. 30 days), keep only
-  verification result + masked fields for the contract period.
+Udyam is optional everywhere (no catalogue product requires it): its problems are caught and
+shown to the reviewer as warnings, never blocking.
+
+## Privacy choices (implemented; see docs/privacy-note.md)
+- Collect only what each step needs; no Aadhaar number asked for or stored.
+- Mask identifiers in UI and logs with one format: GSTIN first 4 + last 3 (`27XU********1ZP`),
+  Udyam / ID / phone the last 4.
+- Encrypt documents at rest (AES-256-GCM); delete raw images 30 days after verification (or at
+  once on request / withdrawal); keep the verification result + masked fields for the contract
+  period plus 8 years (proposed, to be confirmed by legal).
 - Purpose limitation: KYC data used only for onboarding/compliance, not marketing.
 - Consent log with timestamp; withdraw/delete request option.

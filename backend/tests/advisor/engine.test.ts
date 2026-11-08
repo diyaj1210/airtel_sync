@@ -169,7 +169,7 @@ describe("with an LLM", () => {
     expect(sent).not.toContain("27XUIXG0767D1ZP");
     expect(sent).not.toContain("9876543210");
     expect(sent).not.toContain("a@b.com");
-    expect(llm.calls.understand[0]!.message).toContain("27XUIX******1ZP");
+    expect(llm.calls.understand[0]!.message).toContain("27XU********1ZP");
   });
 
   it("does not call the LLM for a short plain answer to the question asked (saves quota)", async () => {

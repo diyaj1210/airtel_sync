@@ -1,3 +1,4 @@
+import { CONSENT } from "../consent.js";
 import request from "supertest";
 import { describe, expect, it } from "vitest";
 import { CONSENT_VERSION } from "../../src/kyc/store.js";
@@ -21,7 +22,7 @@ async function acceptQuote(api: Api, body: Record<string, unknown> = MICRO) {
 
 /** Consent -> sample applicant -> documents -> submit -> (if passed) MOCK e-sign. */
 async function kycFor(api: Api, sampleId: string, quoteId: string | null, sign = true) {
-  const c = await api.post("/api/kyc/cases").send({ consent: { accepted: true, version: CONSENT_VERSION }, lang: "en", ...(quoteId ? { quoteId } : {}) });
+  const c = await api.post("/api/kyc/cases").send({ consent: CONSENT, lang: "en", ...(quoteId ? { quoteId } : {}) });
   const caseId = c.body.caseId as string;
   await api.put(`/api/kyc/cases/${caseId}/business`).send({ sampleId });
   for (const d of samples.get(sampleId)!.documents) {
@@ -90,7 +91,7 @@ describe("checkout and MOCK payment", () => {
     expect((await api.post("/api/orders").send({ caseId: noQuote, method: "upi" })).body).toEqual({ error: "no_quote" });
 
     // A business with no GSTIN (its Udyam number ties the bill to it) passes KYC, but a quote made as if it had a GSTIN cannot be paid.
-    const caseId = (await api.post("/api/kyc/cases").send({ consent: { accepted: true, version: CONSENT_VERSION }, lang: "en", quoteId: (await acceptQuote(api, { ...MICRO, include: ["P15"] })).quoteId })).body.caseId;
+    const caseId = (await api.post("/api/kyc/cases").send({ consent: CONSENT, lang: "en", quoteId: (await acceptQuote(api, { ...MICRO, include: ["P15"] })).quoteId })).body.caseId;
     await api.put(`/api/kyc/cases/${caseId}/business`).send({ applicantName: "Joseph Singh", gstin: null, hasUdyam: true, udyamNumber: "UDYAM-MH-00-9516696" });
     for (const d of ["signatory_id", "address_proof"] as const) await api.put(`/api/kyc/cases/${caseId}/documents/${d}`).set("content-type", "image/png").send(sampleImage("K03", d));
     expect((await api.post(`/api/kyc/cases/${caseId}/submit`)).body.result.status).toBe("pass");

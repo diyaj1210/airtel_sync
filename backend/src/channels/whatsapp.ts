@@ -9,7 +9,9 @@ import { DOC_TYPES, DocumentReadError, type DocType, type DocumentReader } from 
 import { startEsign, verifyEsign } from "../kyc/esign.js";
 import { checkGstin, maskGstin } from "../kyc/identifiers.js";
 import type { Registries } from "../kyc/registry.js";
-import { evaluateCase, type CaseEvaluation } from "../kyc/review.js";
+import type { CaseEvaluation } from "../kyc/review.js";
+import type { KycService } from "../kyc/service.js";
+import { CONSENT_PURPOSES } from "../kyc/store.js";
 import { parseBusiness } from "../kyc/routes.js";
 import type { SampleApplicant } from "../kyc/samples.js";
 import type { KycCase, KycCaseStore } from "../kyc/store.js";
@@ -20,6 +22,7 @@ import type { Order, OrderStore } from "../orders/store.js";
 import { currentStageIndex, nextStage } from "../orders/tracker.js";
 import { buildQuote } from "../quote/quote.js";
 import type { QuoteStore } from "../quote/store.js";
+import { issueSentence } from "../kyc/issueText.js";
 import { formatDate, formatInr, hasText, wa, type ChannelKey } from "./text.js";
 
 /**
@@ -88,6 +91,8 @@ export interface WhatsAppDeps {
   catalogue: Catalogue;
   quoteStore: QuoteStore;
   kycStore: KycCaseStore;
+  /** Shared KYC operations (encrypted documents, readiness, withdrawal). */
+  kycService: KycService;
   registries: Registries;
   samples: SampleApplicant[];
   reader: DocumentReader;
@@ -368,7 +373,11 @@ export class WhatsAppBot {
     }
     const quote = c.quoteId ? this.d.quoteStore.get(c.quoteId) : undefined;
     // Same as the app: the case keeps the code of the partner who referred the quote.
-    const kycCase = this.d.kycStore.create(c.lang, quote?.quoteId ?? null, c.attributionCode ?? quote?.attributionCode ?? null);
+    const kycCase = this.d.kycStore.create(
+      { purposes: [...CONSENT_PURPOSES], marketing: false, lang: c.lang, channel: "whatsapp" },
+      quote?.quoteId ?? null,
+      c.attributionCode ?? quote?.attributionCode ?? null,
+    );
     c.caseId = kycCase.caseId;
     this.d.logger.info("kyc consent given", { caseId: kycCase.caseId, channel: "whatsapp" });
     return this.askName(c);
@@ -458,8 +467,8 @@ export class WhatsAppBot {
     const docName = this.t(c, `kyc.doc.${doc}` as ChannelKey);
     try {
       const reading = await this.d.reader.read(input.bytes, input.contentType, doc);
-      if (!this.d.kycStore.get(k.caseId)) return [{ text: this.t(c, "stopped") }];
-      k.documents[doc] = reading;
+      if (!this.d.kycStore.get(k.caseId) || k.withdrawn) return [{ text: this.t(c, "stopped") }];
+      this.d.kycService.storeDocument(k, doc, input.bytes, reading);
       this.d.logger.info("kyc document read", { caseId: k.caseId, docType: doc, readable: reading.readable, channel: "whatsapp" });
       if (!reading.readable) return [this.askDoc(c, doc, this.t(c, "docUnreadable", { doc: docName }))];
       if (k.submitted) return [{ text: this.t(c, "docRead", { doc: docName }) }, ...this.submit(c)];
@@ -474,9 +483,7 @@ export class WhatsAppBot {
   private submit(c: Conversation): Omit<WaMessage, "id">[] {
     const k = this.kycCase(c);
     if (!k || !k.business) return this.status(c);
-    k.submitted = true;
-    const ev = this.evaluate(k);
-    this.d.logger.info("kyc checked", { caseId: k.caseId, status: ev.status, issues: ev.issues.map((i) => i.code), channel: "whatsapp" });
+    const ev = this.d.kycService.submit(k);
     return [{ text: this.t(c, "checking") }, ...this.result(c, k, ev)];
   }
 
@@ -516,22 +523,7 @@ export class WhatsAppBot {
   }
 
   private issueText(c: Conversation, issue: KycIssue): string {
-    const vars: Record<string, string | number> = {};
-    const opt = (key: string, fallback: string) => (hasText(c.lang, key) ? this.t(c, key) : fallback);
-    if (issue.doc) vars.doc = this.t(c, `kyc.doc.${issue.doc}` as ChannelKey);
-    for (const [name, value] of Object.entries(issue.params)) {
-      if (typeof value === "number") vars[name] = value;
-      else if (typeof value === "string") {
-        if (name === "detected") vars.detected = opt(`kyc.doc.${value}`, value);
-        else if (name === "field") vars.field = opt(`kyc.fieldName.${value}`, value);
-        else if (name === "status") vars.status = opt(`kyc.gstStatus.${value}`, value);
-        else vars[name] = /^\d{4}-\d{2}-\d{2}$/.test(value) ? formatDate(value, c.lang) : value;
-      }
-    }
-    let key = `kyc.issue.${issue.code}`;
-    if (issue.code === "DOC_MISSING" && issue.params.orNumber === true) key += ".orNumber";
-    if (issue.code === "CERT_GSTIN_MISMATCH" && issue.params.checksumValid === false) key += ".invalid";
-    return hasText(c.lang, key) ? this.t(c, key, vars) : issue.code;
+    return issueSentence(c.lang, issue);
   }
 
   // ---------------------------------------------------------------- MOCK e-sign, MOCK payment, tracker
@@ -654,7 +646,9 @@ export class WhatsAppBot {
 
   /** "stop": consent withdrawn. The KYC case and everything in it is deleted, and so is the chat. */
   private stop(c: Conversation): Omit<WaMessage, "id">[] {
-    if (c.caseId && this.d.kycStore.delete(c.caseId)) this.d.logger.info("kyc consent withdrawn, case deleted", { caseId: c.caseId, channel: "whatsapp" });
+    const k = c.caseId ? this.d.kycStore.get(c.caseId) : undefined;
+    // Same as withdrawing in the app: all KYC data deleted at once, the consent record kept as proof.
+    if (k && !k.withdrawn) this.d.kycService.withdraw(k, false);
     this.conversations.delete(c.phone);
     return [{ text: c.orderId ? `${this.t(c, "stopped")}\n${this.t(c, "stoppedOrder", { id: c.orderId })}` : this.t(c, "stopped") }];
   }
@@ -672,12 +666,15 @@ export class WhatsAppBot {
 
   private kycCase(c: Conversation): KycCase | undefined {
     const k = c.caseId ? this.d.kycStore.get(c.caseId) : undefined;
-    if (c.caseId && !k) c.caseId = null; // withdrawn in the app
+    if (c.caseId && (!k || k.withdrawn)) {
+      c.caseId = null; // withdrawn in the app
+      return undefined;
+    }
     return k;
   }
 
   private evaluate(k: KycCase): CaseEvaluation {
-    return evaluateCase(k, this.d.registries, this.d.today());
+    return this.d.kycService.evaluate(k);
   }
 
   private t(c: Conversation, key: string, vars?: Record<string, string | number>): string {

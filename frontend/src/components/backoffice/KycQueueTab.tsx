@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { BackofficeError, kycQueue, reviewCase, type KycQueue, type QueueItem } from "../../api/backoffice";
+import { BackofficeError, documentPhoto, kycQueue, reviewCase, type KycQueue, type QueueItem } from "../../api/backoffice";
+import { BlockerList } from "../kyc/ReadinessCard";
 import { DOC_TYPES } from "../../api/kyc";
 import { formatDate, formatInr } from "../../format";
 import { useI18n } from "../../i18n/I18nProvider";
@@ -54,6 +55,33 @@ function Decision({ item, token, onDone, onExpired, fetchFn }: { item: QueueItem
       </div>
       <p className="muted small">{t("bo.kyc.gstinRule")}</p>
     </div>
+  );
+}
+
+/** A stored photo, decrypted for the operations desk on request (never cached by the browser). */
+function Photo({ token, caseId, doc, fetchFn }: { token: string; caseId: string; doc: string; fetchFn?: typeof fetch }) {
+  const { t } = useI18n();
+  const [url, setUrl] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => () => void (url && URL.revokeObjectURL(url)), [url]);
+  const show = async () => {
+    try {
+      setUrl(URL.createObjectURL(await documentPhoto(token, caseId, doc, fetchFn)));
+    } catch {
+      setFailed(true);
+    }
+  };
+  return (
+    <li>
+      {url ? (
+        <img className="bo-photo" src={url} alt={t(`kyc.doc.${doc}` as "kyc.doc.address_proof")} />
+      ) : (
+        <button type="button" className="link-button" onClick={() => void show()}>
+          {t("bo.kyc.viewPhoto", { doc: t(`kyc.doc.${doc}` as "kyc.doc.address_proof") })}
+        </button>
+      )}
+      {failed && <span className="field-error small"> {t("bo.error")}</span>}
+    </li>
   );
 }
 
@@ -168,6 +196,25 @@ export function KycQueueTab({ token, names, onExpired, fetchFn }: { token: strin
                 </div>
               ))}
             </details>
+            {item.readiness && (
+              <div className="bo-readiness" data-testid={`bo-readiness-${item.caseId}`}>
+                <p className="small">
+                  <strong>{t("bo.kyc.readiness", { state: t(`ready.state.${item.readiness.state}`), percent: item.readiness.percent })}</strong>
+                </p>
+                <BlockerList blockers={item.readiness.blockers} />
+              </div>
+            )}
+            {item.documentsStored.length > 0 && (
+              <details className="kyc-warnings">
+                <summary>{t("bo.kyc.photos", { n: item.documentsStored.length })}</summary>
+                <ul className="bo-photos">
+                  {item.documentsStored.map((d) => (
+                    <Photo key={d} token={token} caseId={item.caseId} doc={d} fetchFn={fetchFn} />
+                  ))}
+                </ul>
+                <p className="muted small">{t("bo.kyc.photosNote")}</p>
+              </details>
+            )}
             {c.result.review && (
               <p className="small">
                 <strong>{t("bo.kyc.decided", { decision: t(`bo.kyc.status.${c.result.review.decision}`), date: formatDate(c.result.review.on, lang) })}</strong>

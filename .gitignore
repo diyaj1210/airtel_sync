@@ -11,3 +11,6 @@ coverage/
 .vite/
 .env.*
 !.env.example
+
+# Encrypted KYC document photos (privacy add-on); never commit them
+backend/var/
