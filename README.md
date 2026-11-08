@@ -312,7 +312,7 @@ against the real backend; only the Python model is replaced by a fake).
 | `POST /api/advisor/sessions` | `{ lang: "en" or "hi", attributionCode? }` → new chat: greeting and the first question |
 | `POST /api/advisor/sessions/:id/messages` | `{ lang, text }` or `{ lang, choice }` → advisor reply (messages, quick replies, recommendation) |
 | `POST /api/advisor/sessions/:id/lead` | `{ reason, phone?, callbackConsent?, note? }` → lead the advisor could not close (`AL-XXXXXXXX`) |
-| `POST /api/kyc/cases` | `{ consent: { accepted: true, version: "kyc-consent-v1" }, lang, quoteId?, attributionCode? }` → new KYC case (`KYC-XXXXXXXX`); `400` without consent |
+| `POST /api/kyc/cases` | `{ consent: { accepted: true, version: "kyc-consent-v2", purposes: [the 5 purposes], marketing? }, lang, channel?, quoteId?, attributionCode? }` → new KYC case (`KYC-XXXXXXXX`); `400` without consent or without every purpose named |
 | `GET /api/kyc/cases/:id` | The case: masked business details, registry details, documents read, result |
 | `PUT /api/kyc/cases/:id/business` | `{ applicantName, gstin or null, hasUdyam, udyamNumber? }` (GSTIN format + checksum checked) or `{ sampleId: "K01" }` (DEMO) → lookups |
 | `PUT /api/kyc/cases/:id/documents/:docType` | Body = the image (`image/png`, `image/jpeg`, `image/webp`, ≤ 8 MB); `docType` = `gst_certificate`, `udyam_certificate`, `signatory_id` or `address_proof` → OCR + checks |
@@ -357,7 +357,7 @@ $reply.messages | Select-Object source, text
 ```powershell
 # KYC: consent, a sample applicant's details, one real document through the OCR, then the result.
 $kyc = Invoke-RestMethod http://localhost:4000/api/kyc/cases -Method Post -ContentType "application/json" `
-  -Body '{"consent":{"accepted":true,"version":"kyc-consent-v1"},"lang":"en"}'
+  -Body '{"consent":{"accepted":true,"version":"kyc-consent-v2","purposes":["identity_verification","product_eligibility","order_activation","electronic_signing","manual_review"]},"lang":"en"}'
 $case = "http://localhost:4000/api/kyc/cases/$($kyc.caseId)"
 Invoke-RestMethod "$case/business" -Method Put -ContentType "application/json" -Body '{"sampleId":"K11"}' | Out-Null
 $r = Invoke-RestMethod "$case/documents/address_proof" -Method Put -ContentType "image/png" -InFile "data\raw\kyc_documents\K11_address_proof.png"
