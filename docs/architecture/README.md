@@ -4,7 +4,6 @@
 
 | File | Use |
 |---|---|
-| `architecture.drawio` | Open and edit in draw.io: https://app.diagrams.net → File → Open from → Device (or the draw.io desktop app). |
 | `architecture.png` | Transparent background, for slides (2240 × 1000). |
 | `architecture.svg` | Transparent background, scales without blurring. |
 
@@ -18,9 +17,6 @@ $svg = (Resolve-Path docs\architecture\architecture.svg).Path -replace '\\','/'
   --default-background-color=00000000 --window-size=2240,1000 `
   --screenshot="$((Resolve-Path docs\architecture).Path)\architecture.png" "file:///$svg"
 ```
-
-If you edit the `.drawio` file by hand in draw.io instead, export a transparent PNG with
-File → Export as → PNG → tick **Transparent Background**.
 
 What the diagram shows:
 - **People**: the owner (phone, English / Hindi), partners and field sales (referral link),
