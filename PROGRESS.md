@@ -7,8 +7,8 @@ Status values: **not started** · **in progress** · **done** (done = merged to 
 | # | Branch | Status | Delivered |
 |---|---|---|---|
 | – | `docs/outline-verification` | done (PR #2 merged) | Outline checked against PDF and data README; fixes in `solution_outline_chat/`; `scripts/verify_outline.py` (all checks pass); `docs/requirements-checklist.md`; `PROGRESS.md`; `CLAUDE.md` |
-| 0 | `chore/scaffold` | done (awaiting commit + PR) | `frontend/` React 19 + Vite 7 + TS mobile-first shell, English/हिंदी switch (saved on device, sets `<html lang>`), system-status card; `backend/` Express 5 + TS with `/api/health`, `/api/health/full` (checks ai-service, 503 when degraded), masking JSON logger, config validation; `ai-service/` FastAPI with `/health`, masking JSON logging incl. uvicorn access logs; `.env.example`; README "How to run". Tests: backend 44, frontend 17, ai-service 36, all passing; `npm audit` and `pip-audit` clean. |
-| 1 | `feature/catalogue-rules` | not started | – |
+| 0 | `chore/scaffold` | done (PR #3 merged) | `frontend/` React 19 + Vite 7 + TS mobile-first shell, English/हिंदी switch (saved on device, sets `<html lang>`), system-status card; `backend/` Express 5 + TS with `/api/health`, `/api/health/full` (checks ai-service, 503 when degraded), masking JSON logger, config validation; `ai-service/` FastAPI with `/health`, masking JSON logging incl. uvicorn access logs; `.env.example`; README "How to run". Tests: backend 44, frontend 17, ai-service 36, all passing; `npm audit` and `pip-audit` clean. |
+| 1 | `feature/catalogue-rules` | done (awaiting commit + PR) | `backend/src/catalogue/`: CSV parser; catalogue loader with strict validation (fails fast at startup); rules engine for all 5 rules with plain-English reasons + codes; pricing (min list price, per-unit setup, contract = max, install = max, max-price range); 5 bundle templates filtered per profile with fallbacks (Factory → fibre + static IP) and add-ons with eligibility; API `GET /api/catalogue`, `GET /api/bundles/templates`, `POST /api/eligibility`, `POST /api/bundles/build`. Tests: backend 124 (80 new), incl. 1,800-profile "never ineligible" invariant and cross-checks against smb_leads.csv (same 49 rule-breaking lines as the Python script; setup + price range match all 368 bundles). |
 | 2 | `feature/quote` | not started | – |
 | 3 | `feature/advisor` | not started | – |
 | 4 | `feature/kyc` | not started | – |
@@ -25,6 +25,14 @@ Status values: **not started** · **in progress** · **done** (done = merged to 
   installing it, a pip-only engine, or a vision LLM (needs a key; the no-key path must still work).
 
 ## Log
+
+- **2026-11-08**: Step 1 catalogue rules. Verified: typecheck, 124 backend tests (two planted
+  bugs in the rules engine were each caught by 12–13 tests), backend build, live API calls,
+  frontend/ai-service tests unchanged and passing, `verify_outline.py` passing.
+  Design notes for later steps: `gstin: "active"` is self-declared until KYC (step 4) checks the
+  registry; the Factory Connect P06 upgrade is an add-on that `replaces` P05 (step 2 applies it).
+  Ideas raised but not yet in the plan (user to decide): compliance replay of past sales,
+  drop-off recovery by stage, churn guardrail, partner attribution (steps 6–7).
 
 - **2026-11-08**: Step 0 scaffold. Verified: dependency install from scratch, typecheck, all
   tests, frontend production build, backend production build, all three services running

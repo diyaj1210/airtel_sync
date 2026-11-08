@@ -23,17 +23,17 @@ S6 propensity · S7 backoffice · S8 whatsapp-voice · S9 submission docs.
 - [ ] **R2.3** Asks about **size** (employees) — S3
 - [ ] **R2.4** Asks about **locations** (number of sites, city → city tier) — S3
 - [ ] **R2.5** Asks about **current tools** (current internet, POS/billing, email, CCTV, messaging) — S3
-- [ ] **R2.6** Recommends a bundle **from the product catalogue** (only catalogue products) — S1, S3
+- [ ] **R2.6** Recommends a bundle **from the product catalogue** (only catalogue products) — S1, S3 *(S1 done: bundles are built only from the 25 catalogue products)*
 - [ ] **R2.7** Explains **why** in plain language — S3
 - [ ] **R2.8** Recommends with a **clear monthly price** (key question 2) — S2, S3
-- [ ] **R2.9** Never recommends an ineligible product: the rules engine decides, the LLM only explains — S1, S3
+- [ ] **R2.9** Never recommends an ineligible product: the rules engine decides, the LLM only explains — S1, S3 *(S1 done: rules engine + 1,800-profile invariant test; advisor wiring in S3)*
 - [ ] **R2.10** Robust to live testing: judges run 15 advisor scenarios live (PDF p.4) → we test ≥15 varied scenarios — S3
 - [ ] **R2.11** Works without an LLM key (deterministic fallback) so the demo cannot break — S3
 
 ### Quote and checkout
 - [ ] **R2.12** A **single, transparent monthly price** — S2
 - [ ] **R2.13** **Add-ons the owner can toggle**, with the price recalculating — S2
-- [ ] **R2.14** Toggled add-ons re-checked against the rules; ineligible ones show a reason — S1, S2
+- [ ] **R2.14** Toggled add-ons re-checked against the rules; ineligible ones show a reason — S1, S2 *(S1 done: add-ons returned with eligibility + reasons; toggle UI in S2)*
 - [ ] **R2.15** One-time setup fee and contract length shown separately and clearly — S2
 - [ ] **R2.16** Plain-language product names (the case complains about quotes "with product codes the owner does not understand") — S2
 - [ ] **R2.17** Checkout completes: payment (working mock, labelled) → order created — S5
@@ -59,7 +59,7 @@ S6 propensity · S7 backoffice · S8 whatsapp-voice · S9 submission docs.
 
 ## 4. Key questions (PDF p.3) — answered in the business case and shown in the prototype
 
-- [ ] **R4.1** Q1: Which MSME segments to prioritise first, and for each a bundle with **products, price point, contract length** — `bundles-and-pricing.md`, S1, S9
+- [ ] **R4.1** Q1: Which MSME segments to prioritise first, and for each a bundle with **products, price point, contract length** — `bundles-and-pricing.md`, S1, S9 *(S1 done: 4 segment bundles + Starter Lite built and priced from the catalogue)*
 - [ ] **R4.2** Q2: Needs discovery without a salesperson: conversational advisor (chat **or** voice, **Hindi and regional languages**), a few questions, recommends a bundle with a clear monthly price — S3, S8, S9
 - [ ] **R4.3** Q3: Near-instant KYC (GSTIN/Udyam lookup, OCR, DigiLocker, e-sign) compliant with the **DPDP Act 2023**: **consent**, **purpose limitation**, **data minimisation** — S4, S9
 - [ ] **R4.4** Q4: Role of the existing field force and channel partners so digital adds to them — `03-assisted-mode.md`, S7, S9
@@ -76,13 +76,13 @@ S6 propensity · S7 backoffice · S8 whatsapp-voice · S9 submission docs.
 ## 6. Data and catalogue rules (data/raw/README.md, PDF p.4)
 
 - [ ] **R6.1** Use `product_catalogue.csv` (25 products) to power the advisor **and** the quote — S1, S2, S3
-- [ ] **R6.2** Rule `available_city_tiers`: product sold only in these tiers — S1
-- [ ] **R6.3** Rule `min_employees`: offered only at or above this size — S1
-- [ ] **R6.4** Rule `min_sites`: offered only at or above this number of sites — S1
-- [ ] **R6.5** Rule `requires_gstin = Y`: cannot be sold without a **valid, active** GSTIN (Cancelled/Suspended blocks it) — S1, S4
-- [ ] **R6.6** Rule `requires_one_of`: needs at least one of the listed products **in the same bundle** (also enforced when the owner removes a product) — S1, S2
+- [x] **R6.2** Rule `available_city_tiers`: product sold only in these tiers — S1
+- [x] **R6.3** Rule `min_employees`: offered only at or above this size — S1
+- [x] **R6.4** Rule `min_sites`: offered only at or above this number of sites — S1
+- [ ] **R6.5** Rule `requires_gstin = Y`: cannot be sold without a **valid, active** GSTIN (Cancelled/Suspended blocks it) — S1, S4 *(S1 done: rule blocks none/cancelled/suspended; S4 will verify the status via the registry)*
+- [ ] **R6.6** Rule `requires_one_of`: needs at least one of the listed products **in the same bundle** (also enforced when the owner removes a product) — S1, S2 *(S1 done: enforced in the same bundle, repeated until stable; removal by the owner in S2)*
 - [ ] **R6.7** `typical_install_days` used for the order tracker **and** expected activation dates — S5
-- [ ] **R6.8** Price within catalogue range (`price_min`–`price_max`); setup fee and minimum contract from the catalogue — S1, S2
+- [ ] **R6.8** Price within catalogue range (`price_min`–`price_max`); setup fee and minimum contract from the catalogue — S1, S2 *(S1 done: list price = price_min, per-unit setup, contract = max; matches all 368 past bundles)*
 - [ ] **R6.9** "GSTIN lookup" API backed by `mock_gstin_registry.csv` (legal name, address, status incl. cancelled/suspended) — S4
 - [ ] **R6.10** "Udyam lookup" API backed by `mock_udyam_registry.csv` — S4
 - [ ] **R6.11** `smb_leads.csv` used for insights (business case) and the propensity model — S6, S9
