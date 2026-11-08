@@ -1,3 +1,4 @@
+import { createAiServiceLlm } from "./advisor/llm.js";
 import { checkAiService } from "./aiClient.js";
 import { createApp } from "./app.js";
 import { type Catalogue, DEFAULT_CATALOGUE_PATH, loadCatalogue } from "./catalogue/catalogue.js";
@@ -32,6 +33,7 @@ const app = createApp({
   catalogue,
   cities,
   quoteStore: new QuoteStore(() => TODAY),
+  advisorLlm: createAiServiceLlm(config.aiServiceUrl, config.advisorTimeoutMs),
 });
 
 const server = app.listen(config.port, () => {

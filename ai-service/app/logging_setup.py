@@ -65,4 +65,7 @@ def setup_logging(level: str = "info", stream: TextIO | None = None) -> logging.
         lg.handlers.clear()
         lg.propagate = True
         lg.setLevel(_LEVELS[level])
+    # Third-party request logs add noise only (they never carry the key: it is sent in a header).
+    for name in ("httpx", "google_genai"):
+        logging.getLogger(name).setLevel(max(_LEVELS[level], logging.WARNING))
     return handler

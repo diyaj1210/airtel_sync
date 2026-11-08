@@ -4,6 +4,8 @@
  */
 import type { Server } from "node:http";
 import type { AddressInfo } from "node:net";
+import { LeadStore } from "../../../backend/src/advisor/leads";
+import type { AdvisorLlm } from "../../../backend/src/advisor/llm";
 import { createApp } from "../../../backend/src/app";
 import { loadCatalogue } from "../../../backend/src/catalogue/catalogue";
 import { loadCities } from "../../../backend/src/cities";
@@ -18,18 +20,23 @@ export interface LiveBackend {
   requests: { method: string; url: string; body: unknown }[];
   /** Make the next requests to a path fail as if the network were down. */
   failNext: (pathPrefix: string, times?: number) => void;
+  /** Leads saved by the advisor (to check what the back-office receives). */
+  leadStore: LeadStore;
   close: () => Promise<void>;
 }
 
 export const catalogue = loadCatalogue();
 
-export async function startBackend(): Promise<LiveBackend> {
+export async function startBackend(options: { advisorLlm?: AdvisorLlm } = {}): Promise<LiveBackend> {
+  const leadStore = new LeadStore(() => TODAY);
   const app = createApp({
     logger: createLogger({ service: "backend", level: "silent" }),
     checkAiService: async () => ({ status: "ok", version: "0.1.0", latencyMs: 1 }),
     catalogue,
     cities: loadCities(),
     quoteStore: new QuoteStore(() => TODAY),
+    leadStore,
+    advisorLlm: options.advisorLlm,
   });
   const server: Server = await new Promise((resolve) => {
     const s = app.listen(0, "127.0.0.1", () => resolve(s));
@@ -54,6 +61,7 @@ export async function startBackend(): Promise<LiveBackend> {
     fetchFn,
     requests,
     failNext: (prefix, times = 1) => failures.push({ prefix, times }),
+    leadStore,
     close: () =>
       new Promise<void>((resolve) => {
         server.closeAllConnections();

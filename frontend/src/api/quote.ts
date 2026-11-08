@@ -92,7 +92,8 @@ export class ApiError extends Error {}
 
 type FetchFn = typeof fetch;
 
-async function call<T>(fetchFn: FetchFn, url: string, body?: unknown): Promise<T> {
+/** JSON call to the backend. Network failure or a non-2xx status -> ApiError (422 -> NotAllowedError). */
+export async function call<T>(fetchFn: FetchFn, url: string, body?: unknown): Promise<T> {
   let res: Response;
   try {
     res = await fetchFn(url, {

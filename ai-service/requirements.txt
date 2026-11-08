@@ -2,3 +2,5 @@
 fastapi==0.162.0
 uvicorn==0.54.0
 python-dotenv==1.2.4
+# Google's official Gemini SDK (advisor language). Without GEMINI_API_KEY it is never called.
+google-genai==2.33.0
