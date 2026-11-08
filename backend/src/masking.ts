@@ -1,0 +1,119 @@
+/**
+ * Masking of personal identifiers for logs (and later the UI).
+ * Privacy rule: never log a full GSTIN, Udyam number, ID number, Aadhaar, PAN, phone or email,
+ * and never log raw documents. The same rules are implemented in ai-service/app/masking.py.
+ */
+
+const stars = (n: number) => "*".repeat(Math.max(n, 0));
+
+interface Rule {
+  name: string;
+  pattern: RegExp;
+  mask: (match: string) => string;
+}
+
+// Order matters: longer / more specific identifiers first. Masked output contains '*',
+// so it can never be matched again by a later rule.
+const RULES: Rule[] = [
+  {
+    // 15-char GSTIN: 2-digit state + 10-char PAN + entity + 'Z' + checksum.
+    // Deliberately loose (any alphanumerics in the PAN part) so invalid or OCR-garbled
+    // GSTINs (e.g. a failed-checksum one from a document) are masked too.
+    name: "gstin",
+    pattern: /\b\d{2}[A-Z0-9]{10}[0-9A-Z]Z[0-9A-Z]\b/gi,
+    mask: (m) => m.slice(0, 6) + stars(6) + m.slice(12),
+  },
+  {
+    name: "udyam",
+    pattern: /\bUDYAM-[A-Z]{2}-\d{2}-\d{7}\b/gi,
+    mask: (m) => m.slice(0, 12) + stars(4) + m.slice(16),
+  },
+  {
+    name: "signatory_id",
+    pattern: /\bSYN-ID-\d{4,}\b/gi,
+    mask: (m) => m.slice(0, 7) + stars(m.length - 10) + m.slice(-3),
+  },
+  {
+    name: "aadhaar",
+    pattern: /(?<![\d*])\d{4}[ -]?\d{4}[ -]?\d{4}(?![\d*])/g,
+    mask: (m) => stars(m.length - 4) + m.slice(-4),
+  },
+  {
+    name: "phone",
+    pattern: /(?<![\d*])(?:\+91[ -]?)?[6-9]\d{9}(?![\d*])/g,
+    mask: (m) => stars(m.length - 4) + m.slice(-4),
+  },
+  {
+    name: "pan",
+    pattern: /\b[A-Z]{5}\d{4}[A-Z]\b/g,
+    mask: (m) => m.slice(0, 2) + stars(7) + m.slice(-1),
+  },
+  {
+    name: "email",
+    pattern: /\b([A-Za-z0-9._%+-])[A-Za-z0-9._%+-]*@([A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,})\b/g,
+    mask: (m) => {
+      const at = m.indexOf("@");
+      return m[0] + stars(3) + m.slice(at);
+    },
+  },
+];
+
+/** Mask every identifier found in a piece of free text. */
+export function maskIdentifiers(text: string): string {
+  let out = text;
+  for (const rule of RULES) {
+    out = out.replace(rule.pattern, rule.mask);
+  }
+  return out;
+}
+
+/** Keys whose values are never logged (documents, images, secrets). Compared case-insensitively. */
+export const REDACTED_KEYS = new Set([
+  "document",
+  "documents",
+  "image",
+  "images",
+  "file",
+  "files",
+  "filedata",
+  "content",
+  "base64",
+  "raw",
+  "rawtext",
+  "ocrtext",
+  "password",
+  "secret",
+  "token",
+  "apikey",
+  "api_key",
+  "authorization",
+]);
+
+export const MAX_LOGGED_STRING = 2000;
+const MAX_DEPTH = 6;
+
+/**
+ * Deep-copy a value for logging: mask identifiers in strings, redact sensitive keys,
+ * omit very long strings (raw documents / base64) and binary buffers.
+ */
+export function maskValue(value: unknown, depth = 0): unknown {
+  if (typeof value === "string") {
+    if (value.length > MAX_LOGGED_STRING) return `[OMITTED ${value.length} chars]`;
+    return maskIdentifiers(value);
+  }
+  if (value === null || typeof value !== "object") return value;
+  if (depth >= MAX_DEPTH) return "[DEPTH LIMIT]";
+  if (value instanceof Uint8Array || value instanceof ArrayBuffer) {
+    return `[OMITTED ${value.byteLength} bytes]`;
+  }
+  if (value instanceof Date) return value.toISOString();
+  if (value instanceof Error) {
+    return { name: value.name, message: maskIdentifiers(value.message) };
+  }
+  if (Array.isArray(value)) return value.map((v) => maskValue(v, depth + 1));
+  const out: Record<string, unknown> = {};
+  for (const [key, v] of Object.entries(value)) {
+    out[key] = REDACTED_KEYS.has(key.toLowerCase()) ? "[REDACTED]" : maskValue(v, depth + 1);
+  }
+  return out;
+}

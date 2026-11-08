@@ -62,7 +62,7 @@ Soft warnings (non-blocking, shown to the reviewer):
 
 ## Privacy choices (for the 1-page note)
 - Collect only what each step needs; no Aadhaar number stored.
-- Mask identifiers in UI and logs (e.g. `27XUIX*****1ZP`).
+- Mask identifiers in UI and logs (e.g. `27XUIX******1ZP`, same length as the GSTIN).
 - Encrypt documents at rest; delete raw images after verification (e.g. 30 days), keep only
   verification result + masked fields for the contract period.
 - Purpose limitation: KYC data used only for onboarding/compliance, not marketing.
