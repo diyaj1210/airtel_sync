@@ -13,7 +13,7 @@ import type { CaseEvaluation } from "../kyc/review.js";
 import type { KycCase } from "../kyc/store.js";
 import { suggestGstin, suggestionView } from "../kyc/suggest.js";
 import type { Registries } from "../kyc/registry.js";
-import { computeTimeline } from "../orders/tracker.js";
+import { shiftTimeline, verificationStart } from "../timeline/timeline.js";
 import type { AcceptedQuote } from "../quote/store.js";
 import { buildAlternative, type Alternative } from "./alternatives.js";
 import { checkFeasibility, LEASED_LINES, needsWired, selectedIds, type Feasibility } from "./feasibility.js";
@@ -55,7 +55,7 @@ export interface Readiness {
   documentsToUpload: DocType[];
   expectedMinutes: number;
   /** After verification: when the selected bundle should be ready (shared computeTimeline). */
-  after: { bundle: string; product: string; days: number; readyOn: string } | null;
+  after: { bundle: string; product: string; days: number; readyOn: string; start: string; dayOne: string[]; window: { from: number; to: number } | null } | null;
   feasibility: Feasibility;
   partner: { code: string; name: string } | null;
   blockers: Blocker[];
@@ -323,6 +323,7 @@ export function assessReadiness(input: AssessInput, withAlternatives = true): Re
     if (q.profile.sites >= PARTNER_SITES) reasons.push({ key: "reason.sites", vars: { n: q.profile.sites } });
     if (q.totals.monthlyInr > PARTNER_MONTHLY_INR) reasons.push({ key: "reason.value" });
     if (q.totals.installDays >= PARTNER_INSTALL_DAYS) reasons.push({ key: "reason.install", vars: { days: q.totals.installDays } });
+    else if (q.timeline.window) reasons.push({ key: "reason.window", vars: { from: q.timeline.window.from, to: q.timeline.window.to } });
     if (reasons.length > 0) {
       partner = partnerFor(c.attributionCode, q.profile.cityTier);
       const list = (lang: Lang) => reasons.map((r) => both(r.key, r.vars ?? {})[lang]).join(", ");
@@ -371,7 +372,8 @@ export function assessReadiness(input: AssessInput, withAlternatives = true): Re
 
   const uploads = documentsToUpload.length + open.filter((b) => b.actionType === "upload").length;
   const confirms = open.filter((b) => b.actionType === "confirm" || b.actionType === "choose_alternative").length;
-  const timeline = q ? computeTimeline(q, today) : null;
+  // Same timeline as the quote, from when verification should be complete (today, +1 day if a person reviews).
+  const timeline = q ? shiftTimeline(q.timeline, verificationStart(today, state === "NEEDS_REVIEW")) : null;
 
   return {
     state,
@@ -384,7 +386,18 @@ export function assessReadiness(input: AssessInput, withAlternatives = true): Re
     found,
     documentsToUpload,
     expectedMinutes: uploads * MINUTES_PER_UPLOAD + confirms * MINUTES_PER_CONFIRM + MINUTES_TO_SIGN_AND_PAY,
-    after: timeline && q ? { bundle: q.name, product: timeline.slowest.name, days: timeline.readyDays, readyOn: timeline.readyOn } : null,
+    after:
+      timeline && q
+        ? {
+            bundle: q.name,
+            product: timeline.slowest.name,
+            days: timeline.readyDays,
+            readyOn: timeline.readyOn,
+            start: timeline.start,
+            dayOne: timeline.lines.filter((l) => l.dayOne).map((l) => l.name),
+            window: timeline.window && { from: timeline.window.from, to: timeline.window.to },
+          }
+        : null,
     feasibility,
     partner,
     blockers: blockers.sort((a, b) => Number(b.hard) - Number(a.hard)),

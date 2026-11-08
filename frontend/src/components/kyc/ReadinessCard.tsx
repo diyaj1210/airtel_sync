@@ -255,7 +255,14 @@ export function ReadinessCard({
       )}
       {r.optional.includes("udyam") && <p className="small muted">{t("ready.optional.udyam")}</p>}
       <p className="small">{t("ready.time", { minutes: r.expectedMinutes })}</p>
-      {r.after && <p className="small">{t("ready.after", { product: r.after.product, days: r.after.days, date: formatDate(r.after.readyOn, lang) })}</p>}
+      {r.after && (
+        <p className="small">
+          {r.after.window
+            ? t("ready.afterWindow", { from: r.after.window.from, to: r.after.window.to })
+            : t("ready.after", { days: r.after.days, date: formatDate(r.after.readyOn, lang), start: formatDate(r.after.start, lang) })}
+        </p>
+      )}
+      {r.after && r.after.dayOne.length > 0 && <p className="small">{t("ready.dayOne", { products: r.after.dayOne.join(", ") })}</p>}
       {r.feasibility.known && (
         <p className="small muted">
           <span className="mock-badge">MOCK</span> {t(r.feasibility.fibre ? "ready.coverage.ok" : "ready.coverage.no", { city: r.feasibility.city ?? "" })}

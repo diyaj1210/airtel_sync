@@ -126,7 +126,11 @@ export function TrackerView({ orderId, initial, fetchFn }: { orderId: string; in
                   {l.qty > 1 ? ` × ${l.qty}` : ""}
                 </span>
               </div>
-              <span className="muted small">{t("track.productReady", { date: date(l.expectedOn) })}</span>
+              <span className="muted small" data-testid={`line-dates-${l.productId}`}>
+                {t("track.planned", { date: date(l.expectedOn) })}
+                {" · "}
+                {l.doneOn ? t("track.actual", { date: date(l.doneOn) }) : t("track.notYet")}
+              </span>
             </li>
           ))}
         </ul>

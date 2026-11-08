@@ -8,6 +8,7 @@
  */
 import { addDays } from "../clock.js";
 import type { Quote } from "../quote/quote.js";
+import { shiftTimeline } from "../timeline/timeline.js";
 
 export const STAGES = ["kyc_verified", "order_placed", "installation_scheduled", "installed", "activated"] as const;
 export type Stage = (typeof STAGES)[number];
@@ -20,8 +21,16 @@ export interface OrderLine {
   name: string;
   qty: number;
   unit: string;
+  /** Days until ready (the shared timeline: own install days, or its base link's if later). */
   installDays: number;
+  /** typical_install_days of the product itself. */
+  ownDays: number;
+  /** The base link it waits for, when that made it later. */
+  waitsFor: string | null;
+  /** Planned date. */
   expectedOn: string;
+  /** Actual date (MOCK: the day the installation reached it), or null. */
+  doneOn: string | null;
 }
 
 export interface StageState {
@@ -44,29 +53,26 @@ export interface Plan {
   readyOn: string;
 }
 
-/**
- * The shared timeline: each selected line's expected date from `start`, and when the whole bundle
- * is ready (its slowest line). Used by the order tracker and by the readiness card ("after
- * verification, ready in about N days"), so both always give the same dates.
- */
-export function computeTimeline(quote: Quote, start: string): { lines: OrderLine[]; readyDays: number; readyOn: string; slowest: OrderLine } {
-  const selected = quote.items.filter((i) => i.selected);
-  if (selected.length === 0) throw new Error("An order needs at least one product");
-  const lines = selected.map((i) => ({
-    productId: i.productId,
-    name: i.name,
-    qty: i.qty,
-    unit: i.unit,
-    installDays: i.installDays,
-    expectedOn: addDays(start, i.installDays),
-  }));
-  const slowest = lines.reduce((a, b) => (b.installDays > a.installDays ? b : a));
-  return { lines, readyDays: slowest.installDays, readyOn: slowest.expectedOn, slowest };
-}
-
 /** Expected dates for an order placed on `placedOn`, from the accepted quote's selected lines. */
 export function planOrder(quote: Quote, placedOn: string, kycVerifiedOn: string): Plan {
-  const { lines, readyDays, readyOn } = computeTimeline(quote, placedOn);
+  // The quote's own timeline (computeTimeline), moved to the order date: same days as the quote showed.
+  const selected = new Set(quote.items.filter((i) => i.selected).map((i) => i.productId));
+  const timeline = shiftTimeline(quote.timeline, placedOn);
+  const planned = timeline.lines.filter((l) => selected.has(l.productId));
+  if (planned.length === 0) throw new Error("An order needs at least one product");
+  const lines: OrderLine[] = planned.map((l) => ({
+    productId: l.productId,
+    name: l.name,
+    qty: l.qty,
+    unit: l.unit,
+    installDays: l.days,
+    ownDays: l.ownDays,
+    waitsFor: l.waitsFor,
+    expectedOn: l.readyOn,
+    doneOn: null,
+  }));
+  const readyDays = Math.max(...planned.map((l) => l.days));
+  const readyOn = addDays(placedOn, readyDays);
   const scheduledOn = addDays(placedOn, Math.min(SCHEDULING_DAYS, readyDays));
   return {
     lines,

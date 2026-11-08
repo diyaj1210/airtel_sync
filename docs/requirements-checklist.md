@@ -130,3 +130,8 @@ Completion, privacy inside the journey; branch `feature/add-ons`).
 - [x] **A2.6** Retention config (proposed), retention job (scheduled + manual DEMO trigger), deletion log; My data page with withdraw / cancel / delete and "Deleted on" *(tested end to end)*
 - [x] **A2.7** Withdrawal stops an order that is not activated; completed records stay *(tested)*
 - [x] **A2.8** docs/privacy-note.md, one page, matching the code
+- [x] **A3.1** One shared computeTimeline (catalogue install days, dependent never before its base link, bundle = latest, Day-1 products) used by the quote, the readiness check and the tracker *(backend/src/timeline/timeline.ts; tests with the expected values)*
+- [x] **A3.2** Quote shows the five elements (name, monthly price, setup, contract, approximate ready date or service window) and the value timeline with the Day-1 banner, Hindi and English
+- [x] **A3.3** Contract = longest minimum contract, naming the product that drives it; one-tap shorter contract when allowed (Micro starter: 12 -> 6 months without Secure Wi-Fi)
+- [x] **A3.4** Long / complex installations: service window, site survey, partner assistance
+- [x] **A3.5** Same dates in quote, readiness check (start +1 day when Needs review) and tracker; tracker shows planned vs actual per product

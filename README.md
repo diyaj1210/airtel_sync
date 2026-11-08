@@ -62,6 +62,13 @@ Two **add-on features** (branch `feature/add-ons`):
   "Did you mean ...?" for a misprinted GSTIN, a MOCK signing link for the registered owner, the
   bundle without GSTIN-only products, 5G AirFiber where fibre is not available (MOCK coverage), a
   re-quote. The same blockers show on the tracker and in the back-office, with one-sitting metrics.
+- **Time-to-value quote**: every quote shows the bundle, the monthly price, the one-time setup, the
+  contract (and which product sets it, e.g. "Remove Secure Wi-Fi for a 6-month contract") and
+  "Expected ready in approximately 5 days (by 20 July 2026)", then **"What you can start using,
+  and when"** by day with a Day-1 banner ("Start using 4 services from tomorrow ..."). Long
+  installations show a service window and a site survey. The same dates (one shared
+  `computeTimeline`) appear in the readiness check and on the tracker, which shows planned vs
+  actual per product.
 - **Privacy inside the journey (DPDP Act 2023)**: lookup first (only the documents the registries
   could not confirm are asked for), a five-section consent listing just those, separate optional
   marketing consent, server-side consent enforcement (403), one masking format everywhere,
@@ -266,6 +273,11 @@ KYC case; no phone, OTP or message text in the log) and `frontend/src/whatsappFl
 (the simulator end to end, voice notes with a stand-in speech engine, the advisor's mic).
 `frontend/src/i18n/channelText.test.ts` checks the bot uses the app's wording word for word
 (`backend/src/channels/sharedText.ts` is generated: `cd backend; npx tsx scripts/sync-channel-text.ts; cd ..`).
+
+Time to value: `backend/tests/timeline/timeline.test.ts` (Office Pro 5 days / 12 months / Day 1 =
+P07 P16 P17 P20; Micro starter 3 days / 12 months because of P22; Chain Connect 14 / 24; Factory
+Connect 21 / 24; a dependent product never before its base link over many profiles; the same dates
+in quote, readiness check and tracker) and `frontend/src/timeToValue.test.tsx`.
 
 Add-ons: `backend/tests/readiness/readiness.test.ts` (K01-K12 each give the expected state, blocker
 and fix through the API; lookup preview; partner assistance; MOCK coverage; expired quote;

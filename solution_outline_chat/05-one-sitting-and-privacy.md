@@ -1,4 +1,4 @@
-# Add-ons: One-Sitting Completion and privacy inside the journey
+# Add-ons: One-Sitting Completion, privacy inside the journey, time to value
 
 The case subtitle is "making small businesses go digital **in one sitting**". Two add-ons make that
 visible to the owner and keep the KYC data minimal (DPDP Act 2023). Both are built on branch
@@ -40,3 +40,19 @@ visible to the owner and keep the KYC data minimal (DPDP Act 2023). Both are bui
   withdraw / cancel / delete documents, with "Deleted on <date>". Withdrawal stops an order that is
   not activated yet.
 - The 1-page note: [docs/privacy-note.md](../docs/privacy-note.md).
+
+## A3. Time-to-value quote + Day-1 value
+- **One ETA function** (`backend/src/timeline/timeline.ts`, `computeTimeline`) for the quote, the
+  readiness check and the tracker: per product, typical_install_days from the catalogue; a product
+  with requires_one_of is never ready before the base link it needs (max of the two); the bundle
+  is ready with its latest product; Day-1 products are ready within a day. Start: today when the
+  readiness is Ready, one day later when a person must review. Always "approximately".
+- **Quote card**: bundle name, monthly price, one-time setup, the contract (= the longest minimum
+  contract, naming the product that drives it, e.g. "12 months because of Secure Wi-Fi" with
+  "Remove Secure Wi-Fi for a 6-month contract") and "Expected ready in approximately N days (by
+  date)". Long or complex installations (leased lines, SD-WAN, managed firewall, machine IoT) show
+  a service window ("21-30 days, site survey required") and partner assistance.
+- **Value timeline**: "What you can start using, and when", by day, with the banner "Start using N
+  services from tomorrow while your internet is being installed."
+- **Tracker**: planned vs actual date per product. No fibre at the address (MOCK coverage): the
+  5G AirFiber bundle with its own date, or a clear "no fallback".

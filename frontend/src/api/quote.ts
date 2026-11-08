@@ -56,6 +56,34 @@ export interface Quote {
   items: QuoteItem[];
   unavailable: { productId: string; name: string; violations: Block[] }[];
   totals: { monthlyInr: number; monthlyMaxInr: number; setupInr: number; contractMonths: number; installDays: number };
+  /** Time to value: when each selected product is ready (approximately; backend computeTimeline). */
+  timeline: Timeline;
+  /** What drives the minimum contract, and a shorter contract without that product. */
+  contract: { months: number; drivers: { productId: string; name: string; months: number }[]; shorter: { remove: string; name: string; months: number } | null };
+}
+
+export interface TimelineLine {
+  productId: string;
+  name: string;
+  qty: number;
+  unit: string;
+  ownDays: number;
+  days: number;
+  waitsFor: string | null;
+  readyOn: string;
+  dayOne: boolean;
+  window: [number, number] | null;
+}
+
+export interface Timeline {
+  approximate: true;
+  start: string;
+  lines: TimelineLine[];
+  readyDays: number;
+  readyOn: string;
+  dayOne: string[];
+  groups: { days: number; readyOn: string; productIds: string[] }[];
+  window: { from: number; to: number; siteSurvey: true; productIds: string[] } | null;
 }
 
 export interface AcceptedQuote {

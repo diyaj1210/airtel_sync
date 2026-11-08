@@ -100,7 +100,7 @@ export interface Readiness {
   found: { key: "businessName" | "gstin" | "location" | "businessType"; value: string }[];
   documentsToUpload: DocType[];
   expectedMinutes: number;
-  after: { bundle: string; product: string; days: number; readyOn: string } | null;
+  after: { bundle: string; product: string; days: number; readyOn: string; start: string; dayOne: string[]; window: { from: number; to: number } | null } | null;
   feasibility: { mock: true; known: boolean; city: string | null; fibre: boolean | null };
   partner: { code: string; name: string } | null;
   blockers: Blocker[];

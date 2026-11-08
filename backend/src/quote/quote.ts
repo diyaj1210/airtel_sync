@@ -3,6 +3,8 @@ import type { Catalogue } from "../catalogue/catalogue.js";
 import { priceBundle } from "../catalogue/pricing.js";
 import { checkBundle, type RuleViolation } from "../catalogue/rules.js";
 import type { BundleLine, BusinessProfile, ProductId, Segment } from "../catalogue/types.js";
+import { TODAY } from "../clock.js";
+import { computeTimeline, type Timeline } from "../timeline/timeline.js";
 
 /**
  * Quote = a segment bundle (step 1) plus the owner's changes: core lines they removed and
@@ -59,6 +61,18 @@ export interface Quote {
   /** Products the rules engine left out for this business, with reasons. */
   unavailable: { productId: ProductId; name: string; violations: RuleViolation[] }[];
   totals: { monthlyInr: number; monthlyMaxInr: number; setupInr: number; contractMonths: number; installDays: number };
+  /** Time to value: when each selected product is ready (the shared computeTimeline, from today). */
+  timeline: Timeline;
+  /** What drives the minimum contract, and a shorter contract if the owner removes that product. */
+  contract: ContractInfo;
+}
+
+export interface ContractInfo {
+  months: number;
+  /** The selected products with the longest minimum contract (they set the bundle's contract). */
+  drivers: { productId: ProductId; name: string; months: number }[];
+  /** Removing the single driving product (when allowed) gives this shorter contract. */
+  shorter: { remove: ProductId; name: string; months: number } | null;
 }
 
 export interface SelectionProblem {
@@ -145,7 +159,8 @@ function problemsFor(
   return problems;
 }
 
-export function buildQuote(catalogue: Catalogue, req: QuoteRequest): Quote {
+/** `today` starts the time-to-value timeline (the injected 2026-07-15; never the system clock). */
+export function buildQuote(catalogue: Catalogue, req: QuoteRequest, today: string = TODAY): Quote {
   const bundle: BuiltBundle = buildBundle(catalogue, req.segment, req.profile, req.variant);
   const options: Option[] = [
     ...bundle.lines.map((l) => ({ productId: l.productId, qty: l.qty, kind: "core" as const })),
@@ -219,6 +234,17 @@ export function buildQuote(catalogue: Catalogue, req: QuoteRequest): Quote {
     };
   });
 
+  const chosen = items.filter((i) => i.selected);
+  const months = Math.max(...chosen.map((i) => i.minContractMonths));
+  const drivers = chosen.filter((i) => i.minContractMonths === months);
+  const others = chosen.filter((i) => i.minContractMonths < months);
+  const only = drivers.length === 1 ? drivers[0]! : null;
+  const contract: ContractInfo = {
+    months,
+    drivers: drivers.map((i) => ({ productId: i.productId, name: i.name, months: i.minContractMonths })),
+    shorter: only && only.canToggle && others.length > 0 ? { remove: only.productId, name: only.name, months: Math.max(...others.map((i) => i.minContractMonths)) } : null,
+  };
+
   return {
     templateId: bundle.templateId,
     name: bundle.name,
@@ -239,5 +265,7 @@ export function buildQuote(catalogue: Catalogue, req: QuoteRequest): Quote {
       contractMonths: price.contractMonths,
       installDays: price.installDays,
     },
+    timeline: computeTimeline(chosen, catalogue, today),
+    contract,
   };
 }

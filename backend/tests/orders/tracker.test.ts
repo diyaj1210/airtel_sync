@@ -11,11 +11,12 @@ const quote = (segment: Segment, profile: QuoteRequest["profile"], include: stri
 
 describe("tracker dates (today = 2026-07-15, typical_install_days from the catalogue)", () => {
   it("each line is ready on order date + its install days; the bundle when its slowest line is", () => {
-    // Office Pro for a 5-person clinic: fibre 5 days, failover 3, SIMs / email / backup / security 1.
+    // Office Pro for a 5-person clinic: fibre 5 days; failover 3, but it needs the fibre, so 5; SIMs / email / backup / security 1.
     const q = quote("prof", { cityTier: 1, employees: 5, sites: 1, gstin: "none" });
     const plan = planOrder(q, TODAY, TODAY);
     const byId = Object.fromEntries(plan.lines.map((l) => [l.productId, l.expectedOn]));
-    expect(byId).toMatchObject({ P02: "2026-07-20", P07: "2026-07-16", P09: "2026-07-18", P16: "2026-07-16" });
+    expect(byId).toMatchObject({ P02: "2026-07-20", P07: "2026-07-16", P09: "2026-07-20", P16: "2026-07-16" });
+    expect(plan.lines.find((l) => l.productId === "P09")).toMatchObject({ ownDays: 3, installDays: 5, waitsFor: "P02", doneOn: null });
     expect(plan.readyOn).toBe("2026-07-20");
     expect(plan.stages).toEqual([
       { stage: "kyc_verified", expectedOn: "2026-07-15", doneOn: "2026-07-15" },

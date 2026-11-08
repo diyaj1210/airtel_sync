@@ -8,7 +8,11 @@ Pricing model (confirmed against all 368 activated bundles in `smb_leads.csv`):
 - Monthly = Σ price × qty, and must stay inside [Σ price_min × qty, Σ price_max × qty] (true for 368/368).
 - One-time setup = Σ `one_time_setup_inr` × qty, i.e. setup is **per unit** (matches 368/368).
 - Contract = max(`min_contract_months`) of the products in the bundle.
-- Install ETA = max(`typical_install_days`) of the products in the bundle.
+- Install ETA = max(`typical_install_days`) of the products in the bundle. Per product, a product that
+  needs a base link (`requires_one_of`) is never ready before that link: ready = max(own days, base
+  link days); so the bundle date is unchanged, but e.g. Office Pro's failover router (3 days) is
+  ready with the fibre on day 5. Shown as an approximate date, with the Day-1 products first
+  (backend `computeTimeline`, used by the quote, the readiness check and the tracker).
 - The templates below are **filtered by the rules engine per profile**: a line whose rule fails
   (tier, min_employees, min_sites, requires_gstin, requires_one_of) is removed or swapped, and
   quantities scale with employees / sites.
