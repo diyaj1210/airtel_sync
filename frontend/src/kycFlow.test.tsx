@@ -129,6 +129,15 @@ describe("KYC: lookup first, then consent (privacy inside the journey)", () => {
     expect(screen.getByRole("button", { name: "Complete your KYC" })).toBeInTheDocument();
   });
 
+  it("has a Back button to Home on the KYC screens", async () => {
+    const u = user();
+    renderApp();
+    await u.click(screen.getByRole("button", { name: "Complete your KYC" }));
+    expect(screen.getByRole("heading", { name: "Your business details" })).toBeInTheDocument();
+    await u.click(screen.getByRole("button", { name: /Back/ }));
+    expect(screen.getByRole("button", { name: "Complete your KYC" })).toBeInTheDocument();
+  });
+
   it("app and server agree on the consent notice version", () => {
     expect(CONSENT_VERSION).toBe(SERVER_CONSENT_VERSION);
   });

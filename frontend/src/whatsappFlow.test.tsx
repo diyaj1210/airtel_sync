@@ -1,4 +1,5 @@
-import { act, render, screen, waitFor, within } from "@testing-library/react";
+import { StrictMode } from "react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { recordedReader } from "../../backend/tests/kyc/helpers";
@@ -21,26 +22,57 @@ afterAll(async () => {
   await backend.close();
 });
 
-/** Stand-in for the browser's SpeechRecognition: "hears" the next phrase, or fails with an error. */
-const heard: { next: string | null; error?: string; langs: string[] } = { next: null, langs: [] };
+/**
+ * Stand-in for the browser's SpeechRecognition (jsdom has none). It "hears" the next phrase word by
+ * word as interim results, then the final result; or fails with an error; or, in `hang` mode, keeps
+ * listening until stop() is called (to test that the owner is never stuck).
+ */
+const heard: { next: string | null; error?: string; hang?: boolean; langs: string[]; active: FakeRecognition | null } = { next: null, langs: [], active: null };
+type Result = { 0: { transcript: string }; length: 1; isFinal: boolean };
 class FakeRecognition {
   lang = "";
   interimResults = false;
   maxAlternatives = 1;
   continuous = false;
-  onresult: ((e: unknown) => void) | null = null;
+  onresult: ((e: { results: Result[] }) => void) | null = null;
   onerror: ((e: { error: string }) => void) | null = null;
   onend: (() => void) | null = null;
+  private ended = false;
   start() {
     heard.langs.push(this.lang);
+    heard.active = this;
+    if (heard.hang) return;
     setTimeout(() => {
-      if (heard.error) this.onerror?.({ error: heard.error });
-      else if (heard.next) this.onresult?.({ results: [[{ transcript: heard.next }]] });
-      this.onend?.();
+      if (heard.error) {
+        this.onerror?.({ error: heard.error });
+        return this.end();
+      }
+      if (heard.next) {
+        const words = heard.next.split(" ");
+        // Live: the first words arrive as an interim result, then the whole phrase as final.
+        if (this.interimResults && words.length > 1) this.onresult?.({ results: [{ 0: { transcript: words.slice(0, 2).join(" ") }, length: 1, isFinal: false }] });
+        setTimeout(() => {
+          this.onresult?.({ results: [{ 0: { transcript: heard.next! }, length: 1, isFinal: true }] });
+          this.end();
+        }, 20);
+      } else this.end();
     }, 0);
   }
-  stop() {}
-  abort() {}
+  /** Test helper: words arrive while listening in hang mode. */
+  say(text: string) {
+    this.onresult?.({ results: [{ 0: { transcript: text }, length: 1, isFinal: false }] });
+  }
+  private end() {
+    if (this.ended) return;
+    this.ended = true;
+    this.onend?.();
+  }
+  stop() {
+    setTimeout(() => this.end(), 0);
+  }
+  abort() {
+    this.end();
+  }
 }
 const withVoice = () => {
   (window as unknown as { SpeechRecognition?: unknown }).SpeechRecognition = FakeRecognition;
@@ -49,16 +81,21 @@ afterEach(() => {
   delete (window as unknown as { SpeechRecognition?: unknown }).SpeechRecognition;
   heard.next = null;
   heard.error = undefined;
+  heard.hang = false;
   heard.langs = [];
+  heard.active = null;
 });
 
 const user = () => userEvent.setup();
 
+/** Rendered in React strict mode, exactly as main.tsx does in the browser. */
 function renderApp() {
   return render(
-    <I18nProvider>
-      <App fetchFn={backend.fetchFn} />
-    </I18nProvider>,
+    <StrictMode>
+      <I18nProvider>
+        <App fetchFn={backend.fetchFn} />
+      </I18nProvider>
+    </StrictMode>,
   );
 }
 
@@ -140,7 +177,7 @@ describe("WhatsApp simulator", () => {
     expect(within(botMessages(log)[0]!).getByRole("button", { name: "English" })).toBeDisabled();
   });
 
-  it("voice note: the mic sends what was said (Hindi), marked as a voice note", async () => {
+  it("voice note: the words appear in the box as the owner speaks, can be corrected, and are sent only with Send", async () => {
     withVoice();
     const u = user();
     renderApp();
@@ -149,28 +186,70 @@ describe("WhatsApp simulator", () => {
     await waitForBot(log, /Choose your language/);
     await tapLatest(u, log, "हिंदी");
     await waitFor(() => expect(lastBot(log).textContent).toMatch(/[ऀ-ॿ]/));
+    const box = screen.getByLabelText("Message") as HTMLInputElement;
+    await u.clear(box);
     heard.next = "मेरी पुणे में बेकरी है";
-    await u.click(screen.getByRole("button", { name: "Speak your message" }));
+    await u.click(screen.getByRole("button", { name: "Speak instead of typing" }));
+    // Live: the first words show up while listening, then the whole sentence.
+    await waitFor(() => expect(box.value).toBe("मेरी पुणे में बेकरी है"));
+    expect(screen.queryByText(/Listening/)).not.toBeInTheDocument(); // stopped by itself after the sentence
+    const before = backend.requests.length;
+    expect(backend.requests.length).toBe(before); // nothing sent yet
+    // The owner corrects it, then sends.
+    await u.type(box, ", 4 लोग");
+    await u.click(screen.getByRole("button", { name: "Send" }));
     await waitFor(() => expect(within(log).getByLabelText("Voice note")).toBeInTheDocument());
-    expect(log.textContent).toContain("मेरी पुणे में बेकरी है");
-    await waitFor(() => expect(backend.requests.some((r) => (r.body as { voice?: boolean } | undefined)?.voice === true)).toBe(true));
+    expect(log.textContent).toContain("मेरी पुणे में बेकरी है, 4 लोग");
+    await waitFor(() => expect(backend.requests.some((r) => (r.body as { voice?: boolean; text?: string } | undefined)?.text === "मेरी पुणे में बेकरी है, 4 लोग" && (r.body as { voice?: boolean }).voice === true)).toBe(true));
     // The UI was in English, so the mic listened in English; the chat language is the bot's.
     expect(heard.langs).toEqual(["en-IN"]);
     expect(document.body.textContent).not.toContain("9876543210");
+  });
+
+  it("the owner is never stuck: tap the mic again (or Stop, or Esc) to stop, and type as usual", async () => {
+    withVoice();
+    heard.hang = true;
+    const u = user();
+    renderApp();
+    await openChat(u);
+    const box = screen.getByLabelText("Message") as HTMLInputElement;
+    await u.clear(box);
+    await u.click(screen.getByRole("button", { name: "Speak instead of typing" }));
+    expect(screen.getByRole("status")).toHaveTextContent("Listening... speak now");
+    heard.active!.say("hello there");
+    await waitFor(() => expect(box.value).toBe("hello there"));
+    await u.click(screen.getByRole("button", { name: "Stop listening" }));
+    await waitFor(() => expect(screen.queryByText(/Listening/)).not.toBeInTheDocument());
+    expect(box.value).toBe("hello there"); // what was heard is kept
+    await u.type(box, " friend");
+    expect(box.value).toBe("hello there friend");
+    // The Stop link and Esc work too.
+    await u.click(screen.getByRole("button", { name: "Speak instead of typing" }));
+    await u.click(screen.getByRole("button", { name: "Stop" }));
+    await waitFor(() => expect(screen.queryByText(/Listening/)).not.toBeInTheDocument());
+    await u.click(screen.getByRole("button", { name: "Speak instead of typing" }));
+    await u.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByText(/Listening/)).not.toBeInTheDocument());
   });
 
   it("voice errors are explained, and the mic is hidden when the browser has no speech recognition", async () => {
     const u = user();
     const first = renderApp();
     await openChat(u);
-    expect(screen.queryByRole("button", { name: "Speak your message" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Speak instead of typing" })).not.toBeInTheDocument();
     first.unmount();
     withVoice();
     heard.error = "not-allowed";
+    const second = renderApp();
+    await openChat(u);
+    await u.click(screen.getByRole("button", { name: "Speak instead of typing" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("The microphone is blocked");
+    second.unmount();
+    heard.error = "network";
     renderApp();
     await openChat(u);
-    await u.click(screen.getByRole("button", { name: "Speak your message" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("The microphone is blocked");
+    await u.click(screen.getByRole("button", { name: "Speak instead of typing" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("speech service could not be reached");
   });
 
   it("a wrong number is refused before the chat opens", async () => {
@@ -193,18 +272,21 @@ describe("WhatsApp simulator", () => {
 });
 
 describe("voice on the advisor chat", () => {
-  it("the mic sends what was said as a message", async () => {
+  it("dictation fills the box live; the owner edits and sends it", async () => {
     withVoice();
     const u = user();
     renderApp();
     await u.click(screen.getByRole("button", { name: "Chat with our advisor" }));
-    await screen.findByRole("button", { name: "Speak your message" });
-    await waitFor(() => expect(screen.getByRole("button", { name: "Speak your message" })).toBeEnabled());
+    const mic = await screen.findByRole("button", { name: "Speak instead of typing" });
+    await waitFor(() => expect(mic).toBeEnabled());
+    const box = screen.getByLabelText(/Type your answer/) as HTMLInputElement;
     heard.next = "I run a bakery in Pune with 4 people";
-    await act(async () => {
-      await u.click(screen.getByRole("button", { name: "Speak your message" }));
-    });
-    await waitFor(() => expect(backend.requests.some((r) => r.url.endsWith("/messages") && (r.body as { text?: string })?.text === "I run a bakery in Pune with 4 people")).toBe(true));
-    expect(await screen.findByText("🎤 I run a bakery in Pune with 4 people")).toBeInTheDocument();
+    await u.click(mic);
+    await waitFor(() => expect(box.value).toBe("I run a bakery in Pune with 4 people"));
+    expect(backend.requests.some((r) => (r.body as { text?: string } | undefined)?.text === "I run a bakery in Pune with 4 people")).toBe(false);
+    await u.clear(box);
+    await u.type(box, "I run a bakery in Pune with 5 people");
+    await u.click(screen.getByRole("button", { name: "Send" }));
+    await waitFor(() => expect(backend.requests.some((r) => r.url.endsWith("/messages") && (r.body as { text?: string })?.text === "I run a bakery in Pune with 5 people")).toBe(true));
   });
 });

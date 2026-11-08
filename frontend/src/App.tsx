@@ -92,7 +92,7 @@ export function App({ fetchFn }: { fetchFn?: typeof fetch }) {
   };
 
   const back: Screen | null =
-    screen.name === "form" || screen.name === "advisor" || screen.name === "whatsapp"
+    screen.name === "form" || screen.name === "advisor" || screen.name === "whatsapp" || screen.name === "kyc" || screen.name === "checkout"
       ? { name: "home" }
       : screen.name === "quote"
         ? screen.from === "advisor"

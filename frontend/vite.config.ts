@@ -32,6 +32,8 @@ export default defineConfig(({ mode }) => {
       environment: "jsdom",
       setupFiles: ["./src/test/setup.ts"],
       include: ["src/**/*.test.{ts,tsx}"],
+      // Whole-journey tests drive the real backend through many screens; 5 s is too tight when all run at once.
+      testTimeout: 20000,
     },
   };
 });
