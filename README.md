@@ -15,9 +15,10 @@ Requirements: [docs/requirements-checklist.md](docs/requirements-checklist.md).
 | `data/raw/` | Synthetic hackathon data (read-only, never modified) | – |
 | `scripts/verify_outline.py` | Checks the outline's bundles and numbers against `data/raw/` | – |
 
-Current state (step 0, scaffold): the three services run and talk to each other, the app shell
-has a working language switch, and a "System status" card shows whether the backend and the
-ai-service are reachable. Business features (advisor, quote, KYC, tracker) arrive in steps 1–8.
+Current state (after step 1): the three services run and talk to each other, the app shell has a
+working language switch and a "System status" card, and the backend has the **catalogue rules
+engine** (eligibility, pricing, segment bundles) behind a JSON API. The screens for quote,
+advisor, KYC and tracker arrive in steps 2–8.
 
 ## How to run (Windows PowerShell)
 
@@ -64,6 +65,23 @@ cd backend; npm test; npm run typecheck; cd ..
 cd frontend; npm test; npm run build; cd ..
 cd ai-service; .\.venv\Scripts\python -m pytest; cd ..
 python scripts/verify_outline.py
+```
+
+### Try the catalogue API (backend running)
+
+| Endpoint | What it does |
+|---|---|
+| `GET /api/catalogue` | All 25 products from `data/raw/product_catalogue.csv` |
+| `GET /api/bundles/templates` | The 5 segment bundles (micro standard + lite, prof, multi, mfg) |
+| `POST /api/eligibility` | `{ profile, productIds }` → eligible or not, with reasons, per product |
+| `POST /api/bundles/build` | `{ segment, variant?, profile }` → eligible bundle, price, removed lines, add-ons |
+
+A `profile` is `{ "cityTier": 1 or 2, "employees": n, "sites": n, "gstin": "active" | "inactive" | "none" }`.
+
+```powershell
+Invoke-RestMethod http://localhost:4000/api/bundles/build -Method Post -ContentType "application/json" `
+  -Body '{"segment":"multi","profile":{"cityTier":2,"employees":15,"sites":3,"gstin":"active"}}' |
+  Select-Object name, @{n="monthly";e={$_.price.monthlyInr}}, @{n="setup";e={$_.price.setupInr}}, @{n="months";e={$_.price.contractMonths}}
 ```
 
 ### Configuration

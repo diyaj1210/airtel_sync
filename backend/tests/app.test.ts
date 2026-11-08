@@ -2,12 +2,15 @@ import request from "supertest";
 import { describe, expect, it } from "vitest";
 import type { AiServiceStatus } from "../src/aiClient.js";
 import { createApp } from "../src/app.js";
+import { loadCatalogue } from "../src/catalogue/catalogue.js";
 import { createLogger } from "../src/logger.js";
+
+const catalogue = loadCatalogue();
 
 function makeApp(ai: AiServiceStatus) {
   const lines: string[] = [];
   const logger = createLogger({ service: "backend", level: "info", sink: (l) => lines.push(l) });
-  const app = createApp({ logger, checkAiService: async () => ai });
+  const app = createApp({ logger, checkAiService: async () => ai, catalogue });
   return { app, lines };
 }
 

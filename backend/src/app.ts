@@ -1,5 +1,7 @@
 import express, { type ErrorRequestHandler, type Express, type RequestHandler } from "express";
 import type { AiServiceStatus } from "./aiClient.js";
+import type { Catalogue } from "./catalogue/catalogue.js";
+import { catalogueRouter } from "./catalogue/routes.js";
 import { SERVICE_NAME, SERVICE_VERSION } from "./config.js";
 import type { Logger } from "./logger.js";
 
@@ -7,9 +9,11 @@ export interface AppDeps {
   logger: Logger;
   /** Returns the ai-service health. Injected so tests need no running ai-service. */
   checkAiService: () => Promise<AiServiceStatus>;
+  /** Product catalogue, loaded once at startup from data/raw/product_catalogue.csv. */
+  catalogue: Catalogue;
 }
 
-export function createApp({ logger, checkAiService }: AppDeps): Express {
+export function createApp({ logger, checkAiService, catalogue }: AppDeps): Express {
   const app = express();
   app.disable("x-powered-by");
   app.use(express.json({ limit: "1mb" }));
@@ -46,6 +50,8 @@ export function createApp({ logger, checkAiService }: AppDeps): Express {
       },
     });
   });
+
+  app.use("/api", catalogueRouter(catalogue));
 
   app.use((_req, res) => {
     res.status(404).json({ error: "not_found" });
