@@ -1,8 +1,14 @@
 import express, { type ErrorRequestHandler, type Express, type RequestHandler } from "express";
+import { AdvisorEngine } from "./advisor/engine.js";
+import { LeadStore } from "./advisor/leads.js";
+import { LlmGate, NO_LLM, type AdvisorLlm } from "./advisor/llm.js";
+import { advisorRouter } from "./advisor/routes.js";
+import { AdvisorSessionStore } from "./advisor/sessions.js";
 import type { AiServiceStatus } from "./aiClient.js";
 import type { Catalogue } from "./catalogue/catalogue.js";
 import { catalogueRouter } from "./catalogue/routes.js";
 import type { City } from "./cities.js";
+import { TODAY } from "./clock.js";
 import { SERVICE_NAME, SERVICE_VERSION } from "./config.js";
 import type { Logger } from "./logger.js";
 import { quoteRouter } from "./quote/routes.js";
@@ -18,9 +24,35 @@ export interface AppDeps {
   cities: City[];
   /** Accepted quotes (in memory). */
   quoteStore: QuoteStore;
+  /** The advisor's language model (via the ai-service). Default: none, the advisor runs on rules. */
+  advisorLlm?: AdvisorLlm;
+  /** Advisor chats (in memory). */
+  advisorSessions?: AdvisorSessionStore;
+  /** Leads the advisor could not close (in memory). */
+  leadStore?: LeadStore;
+  /** Clock for pausing the LLM after failures (tests inject one). */
+  nowMs?: () => number;
 }
 
-export function createApp({ logger, checkAiService, catalogue, cities, quoteStore }: AppDeps): Express {
+export function createApp({
+  logger,
+  checkAiService,
+  catalogue,
+  cities,
+  quoteStore,
+  advisorLlm = NO_LLM,
+  advisorSessions = new AdvisorSessionStore(),
+  leadStore = new LeadStore(() => TODAY),
+  nowMs = () => Date.now(),
+}: AppDeps): Express {
+  const gate = new LlmGate(advisorLlm, (kind) => logger.warn("advisor LLM unavailable, answering by rules", { kind }), nowMs);
+  const advisor = new AdvisorEngine({ catalogue, cities, gate, logger });
+  const llmStatus = async () => {
+    const status = await advisorLlm.status();
+    return status.enabled
+      ? { mode: gate.available() ? "gemini" : "basic", provider: status.provider, model: status.model, ...(gate.available() ? {} : { pausedAfter: gate.lastFailureKind }) }
+      : { mode: "basic", reason: status.reason };
+  };
   const app = express();
   app.disable("x-powered-by");
   app.use(express.json({ limit: "1mb" }));
@@ -60,6 +92,7 @@ export function createApp({ logger, checkAiService, catalogue, cities, quoteStor
 
   app.use("/api", catalogueRouter(catalogue));
   app.use("/api", quoteRouter(catalogue, cities, quoteStore));
+  app.use("/api", advisorRouter(advisor, advisorSessions, leadStore, llmStatus));
 
   app.use((_req, res) => {
     res.status(404).json({ error: "not_found" });

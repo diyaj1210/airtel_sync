@@ -13,6 +13,8 @@ export interface Config {
   aiServiceUrl: string;
   logLevel: LogLevel;
   aiServiceTimeoutMs: number;
+  /** Advisor calls to the ai-service (Gemini answers in 1-3 s; after this the advisor uses its rules). */
+  advisorTimeoutMs: number;
 }
 
 /** Repo root: backend/src (dev, via tsx) and backend/dist (built) are both two levels down. */
@@ -66,5 +68,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     aiServiceUrl: parseUrl("AI_SERVICE_URL", env.AI_SERVICE_URL, "http://127.0.0.1:8000"),
     logLevel: parseLogLevel(env.LOG_LEVEL),
     aiServiceTimeoutMs: 2000,
+    advisorTimeoutMs: 15000,
   };
 }

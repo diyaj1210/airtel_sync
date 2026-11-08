@@ -25,6 +25,7 @@ def main() -> None:
             "url": f"http://{config.host}:{config.port}",
             "version": SERVICE_VERSION,
             "envFile": ".env loaded" if env_loaded else "no .env (using defaults)",
+            "advisorLlm": f"gemini ({config.gemini_model})" if config.llm_enabled else "off: no GEMINI_API_KEY, advisor uses its rules",
         }},
     )
     # log_config=None keeps our masking JSON handler for uvicorn's access and error logs.
