@@ -15,10 +15,12 @@ Requirements: [docs/requirements-checklist.md](docs/requirements-checklist.md).
 | `data/raw/` | Synthetic hackathon data (read-only, never modified) | – |
 | `scripts/verify_outline.py` | Checks the outline's bundles and numbers against `data/raw/` | – |
 
-Current state (after step 1): the three services run and talk to each other, the app shell has a
-working language switch and a "System status" card, and the backend has the **catalogue rules
-engine** (eligibility, pricing, segment bundles) behind a JSON API. The screens for quote,
-advisor, KYC and tracker arrive in steps 2–8.
+Current state (after step 2): the owner can **get a quote on their phone**: Home → "Get my
+price" → a short form (type of business, city, people, locations, GSTIN) → a quote with one
+monthly price, setup fee, contract and ready time, add-on switches that re-price live, and greyed-
+out items that explain why (e.g. "Needs an active GSTIN", "Can't remove: needed by …") → accept →
+quote reference valid for 7 days. English and हिंदी. Every price and rule comes from the backend
+**catalogue rules engine**. The advisor chat, KYC and tracker arrive in steps 3–8.
 
 ## How to run (Windows PowerShell)
 
@@ -55,7 +57,8 @@ cd frontend; npm run dev
 ```
 
 Open http://localhost:5173. The "System status" card should show **Working** for both the app
-server and the AI service. To see the phone layout on a laptop, press F12 and turn on the device
+server and the AI service. Tap **Get my price** to try the quote journey; for example, an office
+or clinic in Kochi with 5 people, 1 location and no GSTIN gets **Office Pro at ₹4,215/month**. To see the phone layout on a laptop, press F12 and turn on the device
 toolbar (Ctrl+Shift+M). Stop any service with Ctrl+C.
 
 ### 3. Run the tests
@@ -67,7 +70,10 @@ cd ai-service; .\.venv\Scripts\python -m pytest; cd ..
 python scripts/verify_outline.py
 ```
 
-### Try the catalogue API (backend running)
+The frontend tests start the real backend code in-process (so the screens are tested against the
+real rules and prices), which means `npm install` must have been run in `backend/` first.
+
+### Try the API (backend running)
 
 | Endpoint | What it does |
 |---|---|
@@ -75,6 +81,10 @@ python scripts/verify_outline.py
 | `GET /api/bundles/templates` | The 5 segment bundles (micro standard + lite, prof, multi, mfg) |
 | `POST /api/eligibility` | `{ profile, productIds }` → eligible or not, with reasons, per product |
 | `POST /api/bundles/build` | `{ segment, variant?, profile }` → eligible bundle, price, removed lines, add-ons |
+| `GET /api/cities` | The 22 cities in the data, with their tier |
+| `POST /api/quote` | `{ segment, variant?, profile, exclude?, include? }` → live quote; `422` with reasons if a change breaks a rule |
+| `POST /api/quotes` | Same body → quote recomputed on the server and accepted (`Q-XXXXXXXX`, valid 7 days from 2026-07-15) |
+| `GET /api/quotes/:id` | An accepted quote (kept in memory until the backend restarts) |
 
 A `profile` is `{ "cityTier": 1 or 2, "employees": n, "sites": n, "gstin": "active" | "inactive" | "none" }`.
 

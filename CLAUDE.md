@@ -35,10 +35,13 @@ buys it, completes KYC and tracks activation, on a phone, in their language.
    git commit -m "<feat|fix|docs|chore>: <message>"
    git push -u origin <branch>
    gh pr create --fill
-   gh pr merge --merge --delete-branch
+   gh pr merge --merge
    git checkout main
    git pull
    ```
+   **Never delete branches** (no `--delete-branch`, no `git branch -d`, no `git push --delete`):
+   the user keeps every step branch on GitHub for the presentation.
+   Merge each step into `main` before starting the next step; new branches start from `main`.
    **Do NOT commit or push yourself**; the user does it. Then update `PROGRESS.md` (status +
    what was delivered) and give the commands for the next branch.
 

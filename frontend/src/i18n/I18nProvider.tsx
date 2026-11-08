@@ -34,10 +34,19 @@ function saveLang(lang: Lang): void {
   }
 }
 
+export type TranslateVars = Record<string, string | number>;
+export type Translate = (key: MessageKey, vars?: TranslateVars) => string;
+
 interface I18nValue {
   lang: Lang;
   setLang: (lang: Lang) => void;
-  t: (key: MessageKey) => string;
+  t: Translate;
+}
+
+/** Replace {name} placeholders. An unknown placeholder is left visible so tests catch it. */
+export function interpolate(template: string, vars?: TranslateVars): string {
+  if (!vars) return template;
+  return template.replace(/\{(\w+)\}/g, (whole, name: string) => (name in vars ? String(vars[name]) : whole));
 }
 
 const I18nContext = createContext<I18nValue | null>(null);
@@ -55,7 +64,7 @@ export function I18nProvider({ children, initialLang }: { children: ReactNode; i
   }, []);
 
   const value = useMemo<I18nValue>(
-    () => ({ lang, setLang, t: (key) => DICTIONARIES[lang][key] }),
+    () => ({ lang, setLang, t: (key, vars) => interpolate(DICTIONARIES[lang][key], vars) }),
     [lang, setLang],
   );
 

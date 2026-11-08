@@ -25,17 +25,17 @@ S6 propensity · S7 backoffice · S8 whatsapp-voice · S9 submission docs.
 - [ ] **R2.5** Asks about **current tools** (current internet, POS/billing, email, CCTV, messaging) — S3
 - [ ] **R2.6** Recommends a bundle **from the product catalogue** (only catalogue products) — S1, S3 *(S1 done: bundles are built only from the 25 catalogue products)*
 - [ ] **R2.7** Explains **why** in plain language — S3
-- [ ] **R2.8** Recommends with a **clear monthly price** (key question 2) — S2, S3
+- [ ] **R2.8** Recommends with a **clear monthly price** (key question 2) — S2, S3 *(S2 done: clear monthly price on the quote; advisor in S3)*
 - [ ] **R2.9** Never recommends an ineligible product: the rules engine decides, the LLM only explains — S1, S3 *(S1 done: rules engine + 1,800-profile invariant test; advisor wiring in S3)*
 - [ ] **R2.10** Robust to live testing: judges run 15 advisor scenarios live (PDF p.4) → we test ≥15 varied scenarios — S3
 - [ ] **R2.11** Works without an LLM key (deterministic fallback) so the demo cannot break — S3
 
 ### Quote and checkout
-- [ ] **R2.12** A **single, transparent monthly price** — S2
-- [ ] **R2.13** **Add-ons the owner can toggle**, with the price recalculating — S2
-- [ ] **R2.14** Toggled add-ons re-checked against the rules; ineligible ones show a reason — S1, S2 *(S1 done: add-ons returned with eligibility + reasons; toggle UI in S2)*
-- [ ] **R2.15** One-time setup fee and contract length shown separately and clearly — S2
-- [ ] **R2.16** Plain-language product names (the case complains about quotes "with product codes the owner does not understand") — S2
+- [x] **R2.12** A **single, transparent monthly price** — S2 *(S2: one monthly total on the quote screen, recomputed by the server on every change)*
+- [x] **R2.13** **Add-ons the owner can toggle**, with the price recalculating — S2 *(S2: add-on switches; price updates live)*
+- [x] **R2.14** Toggled add-ons re-checked against the rules; ineligible ones show a reason — S1, S2 *(S2: ineligible add-ons greyed out with the reason in English/Hindi; server re-checks and refuses (422))*
+- [x] **R2.15** One-time setup fee and contract length shown separately and clearly — S2 *(S2: setup, contract and ready time shown separately from the monthly price)*
+- [x] **R2.16** Plain-language product names (the case complains about quotes "with product codes the owner does not understand") — S2 *(S2: product names + translated descriptions and units; no product codes on screen (tested))*
 - [ ] **R2.17** Checkout completes: payment (working mock, labelled) → order created — S5
 
 ### Smart KYC
@@ -80,9 +80,9 @@ S6 propensity · S7 backoffice · S8 whatsapp-voice · S9 submission docs.
 - [x] **R6.3** Rule `min_employees`: offered only at or above this size — S1
 - [x] **R6.4** Rule `min_sites`: offered only at or above this number of sites — S1
 - [ ] **R6.5** Rule `requires_gstin = Y`: cannot be sold without a **valid, active** GSTIN (Cancelled/Suspended blocks it) — S1, S4 *(S1 done: rule blocks none/cancelled/suspended; S4 will verify the status via the registry)*
-- [ ] **R6.6** Rule `requires_one_of`: needs at least one of the listed products **in the same bundle** (also enforced when the owner removes a product) — S1, S2 *(S1 done: enforced in the same bundle, repeated until stable; removal by the owner in S2)*
+- [x] **R6.6** Rule `requires_one_of`: needs at least one of the listed products **in the same bundle** (also enforced when the owner removes a product) — S1, S2 *(S1 + S2: removal of a needed product is blocked with 'needed by …')*
 - [ ] **R6.7** `typical_install_days` used for the order tracker **and** expected activation dates — S5
-- [ ] **R6.8** Price within catalogue range (`price_min`–`price_max`); setup fee and minimum contract from the catalogue — S1, S2 *(S1 done: list price = price_min, per-unit setup, contract = max; matches all 368 past bundles)*
+- [x] **R6.8** Price within catalogue range (`price_min`–`price_max`); setup fee and minimum contract from the catalogue — S1, S2 *(S1 + S2: list price = price_min, per-unit setup, contract = max; matches all 368 past bundles)*
 - [ ] **R6.9** "GSTIN lookup" API backed by `mock_gstin_registry.csv` (legal name, address, status incl. cancelled/suspended) — S4
 - [ ] **R6.10** "Udyam lookup" API backed by `mock_udyam_registry.csv` — S4
 - [ ] **R6.11** `smb_leads.csv` used for insights (business case) and the propensity model — S6, S9
