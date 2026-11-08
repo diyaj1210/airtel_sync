@@ -3,6 +3,7 @@ import { advanceOrder, getOrder, OrderError, type Order } from "../../api/orders
 import { formatDate, formatInr } from "../../format";
 import type { MessageKey } from "../../i18n/en";
 import { useI18n } from "../../i18n/I18nProvider";
+import { BlockerList } from "../kyc/ReadinessCard";
 
 /**
  * Order status the owner can check instead of calling: stages with done / expected dates, when
@@ -84,6 +85,17 @@ export function TrackerView({ orderId, initial, fetchFn }: { orderId: string; in
         </button>
       </section>
 
+      {order.stopped && (
+        <section className="card card--alert" role="status" data-testid="order-stopped">
+          <p>{t("track.stopped", { date: date(order.stopped.on) })}</p>
+        </section>
+      )}
+      {order.blockers && order.blockers.length > 0 && (
+        <section className="card" aria-label={t("track.blockers")}>
+          <BlockerList blockers={order.blockers} title="track.blockers" />
+        </section>
+      )}
+
       <section className="card" aria-labelledby="track-timeline">
         <h3 id="track-timeline" className="card__title">
           {t("track.timeline")}
@@ -137,7 +149,7 @@ export function TrackerView({ orderId, initial, fetchFn }: { orderId: string; in
         </ul>
       </section>
 
-      {!order.activated && (
+      {!order.activated && !order.stopped && (
         <section className="card card--demo">
           <span className="mock-badge">MOCK</span>
           <p className="muted small">{t("track.mockNote")}</p>

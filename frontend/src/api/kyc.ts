@@ -6,7 +6,10 @@ export const DOC_TYPES = ["gst_certificate", "udyam_certificate", "signatory_id"
 export type DocType = (typeof DOC_TYPES)[number];
 
 /** Must match backend/src/kyc/store.ts CONSENT_VERSION (checked by a test). */
-export const CONSENT_VERSION = "kyc-consent-v1";
+export const CONSENT_VERSION = "kyc-consent-v2";
+/** Every purpose KYC needs, named separately (must match backend CONSENT_PURPOSES). */
+export const CONSENT_PURPOSES = ["identity_verification", "product_eligibility", "order_activation", "electronic_signing", "manual_review"] as const;
+export type ConsentPurpose = (typeof CONSENT_PURPOSES)[number];
 export const ACCEPTED_IMAGES = "image/png,image/jpeg,image/webp";
 export const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 
@@ -31,7 +34,7 @@ export interface DocumentView {
 
 export interface KycCase {
   caseId: string;
-  consent: { version: string; acceptedOn: string };
+  consent: { id?: string; version: string; acceptedOn: string; purposes?: ConsentPurpose[]; marketing?: boolean; channel?: string };
   quoteId: string | null;
   sampleId: string | null;
   business: { applicantName: string; gstin: string | null; hasUdyam: boolean; udyamNumber: string | null } | null;
@@ -52,6 +55,91 @@ export interface KycCase {
   };
   submitted: boolean;
   esign: { started: boolean; signed: { reference: string; signedOn: string; documentHash: string } | null } | null;
+  orderId?: string | null;
+  /** One-Sitting Completion (null before the business details, and after withdrawal). */
+  readiness?: Readiness | null;
+  /** Problems already sorted out (by the owner or the system, or waived by staff). */
+  blockerHistory?: Blocker[];
+  withdrawn?: { on: string; cancelled: boolean } | null;
+}
+
+export type ReadinessState = "NOT_CURRENTLY_POSSIBLE" | "PARTNER_ASSISTANCE_RECOMMENDED" | "NEEDS_REVIEW" | "ALMOST_READY" | "READY";
+export type RequirementGroup = "business" | "gstin" | "signatory" | "address" | "feasibility";
+export interface Bilingual {
+  en: string;
+  hi: string;
+}
+
+export interface Blocker {
+  id: string;
+  category: string;
+  customerMessage: Bilingual;
+  requiredAction: Bilingual;
+  actionType: "upload" | "confirm" | "choose_alternative" | "send_esign_link" | "wait_review" | "contact_partner";
+  responsibleParty: "customer" | "accel_ops" | "partner" | "installer";
+  status: "open" | "in_progress" | "resolved" | "waived";
+  expectedResolution: Bilingual;
+  alternative?: { kind: string; bundle: string; monthlyInr: number; setupInr: number; removed: string[]; added: string[] };
+  doc?: DocType;
+  suggestion?: { gstinMasked: string; legalName: string };
+  question?: Bilingual;
+  answer?: string | null;
+  hard: boolean;
+  openedOn: string;
+  resolvedOn: string | null;
+  resolvedBy: "auto" | "staff" | null;
+}
+
+export interface Readiness {
+  state: ReadinessState;
+  percent: number;
+  verified: number;
+  applicable: number;
+  remaining: RequirementGroup[];
+  optional: "udyam"[];
+  found: { key: "businessName" | "gstin" | "location" | "businessType"; value: string }[];
+  documentsToUpload: DocType[];
+  expectedMinutes: number;
+  after: { bundle: string; product: string; days: number; readyOn: string } | null;
+  feasibility: { mock: true; known: boolean; city: string | null; fibre: boolean | null };
+  partner: { code: string; name: string } | null;
+  blockers: Blocker[];
+  alternative: { kind: string; bundle: string; state: ReadinessState } | null;
+  bundle: string | null;
+  reviewWithinHours: number;
+}
+
+export interface Lookup {
+  mock: true;
+  registry: {
+    gst: { gstin: string; legalName: string; tradeName: string; constitution: string; address: string; state: string; status: string } | null;
+    udyam: { udyamNumber: string; enterpriseName: string; city: string; state: string } | null;
+  };
+  gstin: string;
+  documents: Record<DocType, "required" | "optional" | "not_needed">;
+  documentsNeeded: DocType[];
+  documentsNotNeeded: number;
+  readiness: Readiness | null;
+}
+
+export interface Retention {
+  status: string;
+  rawDocumentDaysAfterVerification: number;
+  verificationResultYearsAfterContract: number;
+  consentRecordYearsAfterContract: number;
+  unfinishedApplicationDays: number;
+}
+
+export interface MyData {
+  caseId: string;
+  status: "active" | "withdrawn" | "cancelled";
+  consent: { id: string; noticeVersion: string; acceptedOn: string; purposes: ConsentPurpose[]; marketing: boolean; channel: "app" | "whatsapp"; withdrawnOn: string | null };
+  held: { applicantName: string; gstin: string | null; udyamNumber: string | null; hasUdyam: boolean; verificationResult: KycStatus | null } | null;
+  documents: { doc: DocType; storedOn: string; encrypted: true; deleteDueOn: string | null; daysLeft: number | null; deletedOn: string | null; detailsKept: boolean }[];
+  deletionLog: { what: DocType | "all_kyc_data"; deletedOn: string; reason: "retention" | "owner_request" | "withdrawal" | "replaced" }[];
+  retention: Retention;
+  orderId: string | null;
+  openBlockers: number;
 }
 
 export interface BusinessInput {
@@ -125,8 +213,33 @@ async function send<T>(fetchFn: FetchFn, method: string, url: string, body?: unk
 
 const caseUrl = (id: string) => `/api/kyc/cases/${encodeURIComponent(id)}`;
 
-export const startKyc = (lang: Lang, quoteId: string | null, fetchFn: FetchFn = fetch) =>
-  send<KycCase>(fetchFn, "POST", "/api/kyc/cases", withReferral({ consent: { accepted: true, version: CONSENT_VERSION }, lang, ...(quoteId ? { quoteId } : {}) }));
+export const startKyc = (lang: Lang, quoteId: string | null, fetchFn: FetchFn = fetch, marketing = false) =>
+  send<KycCase>(
+    fetchFn,
+    "POST",
+    "/api/kyc/cases",
+    withReferral({ consent: { accepted: true, version: CONSENT_VERSION, purposes: [...CONSENT_PURPOSES], marketing }, lang, ...(quoteId ? { quoteId } : {}) }),
+  );
+
+/** Lookup first: what the registries know and which documents are still needed (before consent; nothing is stored). */
+export const lookupKyc = (
+  body: { gstin: string | null; hasUdyam: boolean; udyamNumber: string | null; quoteId?: string | null } | { sampleId: string; quoteId?: string | null },
+  fetchFn: FetchFn = fetch,
+) => send<Lookup>(fetchFn, "POST", "/api/kyc/lookup", body);
+
+export const retentionInfo = (fetchFn: FetchFn = fetch) =>
+  send<{ retention: Retention; purposes: ConsentPurpose[]; noticeVersion: string }>(fetchFn, "GET", "/api/privacy/retention");
+
+export const resumeKyc = (caseId: string, fetchFn: FetchFn = fetch) => send<KycCase>(fetchFn, "POST", `${caseUrl(caseId)}/resume`, {});
+export const chooseAlternative = (caseId: string, kind: string, fetchFn: FetchFn = fetch) => send<KycCase>(fetchFn, "POST", `${caseUrl(caseId)}/alternative`, { kind });
+export const confirmGstin = (caseId: string, fetchFn: FetchFn = fetch) => send<KycCase>(fetchFn, "POST", `${caseUrl(caseId)}/gstin-suggestion`, {});
+export const sendOwnerLink = (caseId: string, fetchFn: FetchFn = fetch) =>
+  send<{ mock: true; sentTo: string; otp: string; case: KycCase }>(fetchFn, "POST", `${caseUrl(caseId)}/authorisation`, {});
+export const ownerSigns = (caseId: string, otp: string, fetchFn: FetchFn = fetch) => send<KycCase>(fetchFn, "POST", `${caseUrl(caseId)}/authorisation/sign`, { otp });
+export const answerQuestion = (caseId: string, blockerId: string, answer: string, fetchFn: FetchFn = fetch) =>
+  send<KycCase>(fetchFn, "POST", `${caseUrl(caseId)}/answers`, { blockerId, answer });
+export const myData = (caseId: string, fetchFn: FetchFn = fetch) => send<MyData>(fetchFn, "GET", `${caseUrl(caseId)}/my-data`);
+export const deleteMyDocuments = (caseId: string, fetchFn: FetchFn = fetch) => send<MyData>(fetchFn, "POST", `${caseUrl(caseId)}/documents/delete`, {});
 
 export const saveBusiness = (caseId: string, body: BusinessInput | { sampleId: string }, fetchFn: FetchFn = fetch) =>
   send<KycCase>(fetchFn, "PUT", `${caseUrl(caseId)}/business`, body);
@@ -145,8 +258,32 @@ export const startEsign = (caseId: string, fetchFn: FetchFn = fetch) =>
 export const verifyEsign = (caseId: string, otp: string, fetchFn: FetchFn = fetch) =>
   send<KycCase>(fetchFn, "POST", `${caseUrl(caseId)}/esign/verify`, { otp });
 
-export const withdrawConsent = (caseId: string, fetchFn: FetchFn = fetch) =>
-  send<{ withdrawn: true; deleted: true }>(fetchFn, "DELETE", caseUrl(caseId));
+/** Withdraw consent (or cancel the unfinished application): everything collected for KYC is deleted at once. */
+export const withdrawConsent = (caseId: string, fetchFn: FetchFn = fetch, cancel = false) =>
+  send<{ withdrawn: true; deleted: true; deletedOn: string; orderStopped: boolean }>(fetchFn, "DELETE", `${caseUrl(caseId)}${cancel ? "?cancel=true" : ""}`);
+
+const KYC_REF_KEY = "udyam.kyc";
+/** The last application on this device, so the owner can come back to it (a convenience only). */
+export function rememberApplication(caseId: string | null): void {
+  try {
+    if (caseId) window.localStorage.setItem(KYC_REF_KEY, caseId);
+    else window.localStorage.removeItem(KYC_REF_KEY);
+  } catch {
+    // storage blocked: the owner can still type the reference
+  }
+}
+export function rememberedApplication(): string | null {
+  try {
+    const v = window.localStorage.getItem(KYC_REF_KEY);
+    return v && /^KYC-[0-9A-F]{8}$/.test(v) ? v : null;
+  } catch {
+    return null;
+  }
+}
+export const cleanCaseId = (raw: string): string | null => {
+  const v = raw.trim().toUpperCase().replace(/\s+/g, "");
+  return /^KYC-[0-9A-F]{8}$/.test(v) ? v : null;
+};
 
 export const listSamples = async (fetchFn: FetchFn = fetch) => (await send<{ samples: Sample[] }>(fetchFn, "GET", "/api/kyc/samples")).samples;
 

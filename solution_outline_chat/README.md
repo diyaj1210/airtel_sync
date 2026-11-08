@@ -24,6 +24,7 @@ Supporting documents:
 - [architecture.md](architecture.md) – components, data flow, tech stack
 - [metrics-and-rollout.md](metrics-and-rollout.md) – KPIs, targets, phased rollout
 - [build-plan.md](build-plan.md) – module-by-module build order for the prototype
+- [05-one-sitting-and-privacy.md](05-one-sitting-and-privacy.md) – add-ons: One-Sitting Completion + No Dead Ends, privacy inside the journey
 
 ## Mapping to what the judges asked for
 
@@ -38,7 +39,7 @@ Supporting documents:
 | Stretch: propensity score | Solution 4 |
 | Key Q1 segments & bundles | bundles-and-pricing.md |
 | Key Q2 needs discovery without salesperson | Solution 1 + 2 |
-| Key Q3 near-instant, DPDP-compliant KYC | kyc-validation.md + architecture.md |
+| Key Q3 near-instant, DPDP-compliant KYC | kyc-validation.md + architecture.md + 05-one-sitting-and-privacy.md |
 | Key Q4 role of field force & partners | Solution 3 |
 | Key Q5 metrics & targets (3–5 metrics) | metrics-and-rollout.md |
 

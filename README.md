@@ -54,6 +54,20 @@ queue** where the operations desk approves or rejects manual-review cases, and *
 attribution**: a partner's link `/?ref=PTR-01` follows the customer from the chat or quote to
 KYC and the order, so the partner is credited even when the customer finishes alone.
 
+Two **add-on features** (branch `feature/add-ons`):
+- **One-Sitting Completion + No Dead Ends**: before any upload, the owner sees whether the journey
+  can be finished now (Ready / Almost ready / Needs a check by our team / Partner help recommended
+  / Not possible as chosen), a readiness percentage ("80% - 4 of 5 verified"), the expected time
+  and the install date, and **every problem comes with a fix**: re-upload with photo tips, a one-tap
+  "Did you mean ...?" for a misprinted GSTIN, a MOCK signing link for the registered owner, the
+  bundle without GSTIN-only products, 5G AirFiber where fibre is not available (MOCK coverage), a
+  re-quote. The same blockers show on the tracker and in the back-office, with one-sitting metrics.
+- **Privacy inside the journey (DPDP Act 2023)**: lookup first (only the documents the registries
+  could not confirm are asked for), a five-section consent listing just those, separate optional
+  marketing consent, server-side consent enforcement (403), one masking format everywhere,
+  document photos encrypted at rest and deleted on a schedule, a **My data** page (withdraw,
+  cancel, delete documents, "Deleted on ...") and the 1-page [privacy note](docs/privacy-note.md).
+
 ## How to run (Windows PowerShell)
 
 Prerequisites: **Node.js 22.12+** and **Python 3.11+** (developed on Node 22.18, Python 3.13).
@@ -100,14 +114,23 @@ quote. The badge at the top of the chat says **AI helper on** (Gemini) or **Basi
 sentences written by Gemini carry a small "AI" label. **Get my price** opens the short form instead. To see the phone layout on a laptop, press F12 and turn on the device
 toolbar (Ctrl+Shift+M). Stop any service with Ctrl+C.
 
-**Try the KYC**: Home → **Complete your KYC** → tick the consent box → in the dashed **DEMO** box
-choose a sample applicant (K01–K12 from `data/raw/kyc_documents`) → **Use this sample**. The app
-fills in that applicant's details and uploads their document images one by one through the same
-upload + OCR path a phone photo takes (about 2 s per page; the first page also loads the OCR
-models). For example **K03** passes (then **Sign the agreement** → MOCK one-time password),
-**K11** is asked for a recent bill (257 days old) and **K07** goes to manual review (the legal
-name on the GST certificate differs from the registry). To upload your own photo, enter the
-details yourself and use **Upload photo** on each document.
+**Try the KYC** (lookup first): Home → **Complete your KYC** → enter a GSTIN (or tick "no GSTIN")
+and Udyam yes/no → **Look up my business** (or, in the dashed **DEMO** box, choose a sample
+applicant K01–K12 from `data/raw/kyc_documents` → **Use this sample**). The **Business record
+found** screen shows what the registry knows, how many documents are not needed and a readiness
+preview; nothing is stored yet. **Continue** → the consent screen (five sections, listing only the
+documents still needed; marketing is a separate, unticked box) → your name → documents. A DEMO
+sample uploads every image it has, one by one, through the same upload + OCR path a phone photo
+takes (about 2 s per page; the first page also loads the OCR models). The **One-Sitting
+Completion** card on top says where you stand and gives a button for each fix:
+**K03** Ready → **Sign the agreement**; **K11** Almost ready, 80% → "upload a bill dated on or
+after 16 April 2026"; **K06** → "Did you mean 08YK\*\*\*\*\*\*\*\*1ZO?" → one tap → Ready; **K10** →
+**Send the signing link (MOCK)** → type the registered owner's code shown → Ready; **K07** needs a
+check by our team (within 4 working hours, MOCK) and asks you a question; **K01** with a quote that
+has WhatsApp Business API → Not possible as chosen → **Switch to ...** → Ready. **My data** (next
+to the reference) shows what is held, each photo's deletion date, and lets you delete the photos,
+cancel or withdraw. Leave and come back with Home → **Continue my application** (the last
+reference is remembered on the device).
 
 **Try payment and the tracker**: start from a quote (Home → **Get my price** → … → **Accept this
 quote** → **Continue to KYC**), do the KYC with sample **K03** and sign, then **Pay and place my
@@ -128,6 +151,12 @@ the chat. 🔊 reads replies aloud. The 🎤 mic is also on the advisor chat. Vo
 with speech recognition (Chrome or Edge; they use their own speech service for it) and
 microphone permission; elsewhere the mic is hidden and typing works as usual.
 
+**Try the add-ons in the back-office**: as **Operations desk**, **KYC exceptions** shows each case's
+readiness and blockers (with the owner's answers) and **Stored document photos** (decrypted only
+for this role, every view logged); the **One sitting** tab shows journeys completed in one
+sitting, blockers resolved without staff and alternatives accepted, and runs the **retention
+job** "as of" a later date (DEMO: 2026-08-14 deletes photos verified on 15 July).
+
 **Try the back-office**: open http://localhost:5173/backoffice (or the **Staff back-office**
 link at the bottom of Home) and pick a **MOCK** demo account (no password):
 - **Operations desk** (`ADM-01`) sees everything. In **KYC exceptions**, a K07 or K10 case
@@ -144,19 +173,20 @@ link at the bottom of Home) and pick a **MOCK** demo account (no password):
 Scores need the ai-service; without it the lists still work and say the scores are unavailable.
 Leads, cases and orders live in memory, so restarting the backend empties them.
 
-Expected results (all 12 checked by tests, and live with the real OCR):
+Expected results with the One-Sitting Completion card (all 12 checked by tests; the KYC check
+result is in brackets):
 
-| Applicant | Result | Why |
+| Applicant | Readiness | Why, and the fix offered |
 |---|---|---|
-| K01 | Manual review | GSTIN **Cancelled** in the registry (GSTIN-only products blocked); blank Udyam certificate not used |
-| K02 | Pass | GST certificate is rotated: straightened before OCR |
-| K03, K08, K09, K12 | Pass | (only soft notes, e.g. the Udyam registration date) |
-| K04 | Fix needed | GST certificate blurred: re-upload |
-| K05 | Fix needed | Udyam certificate missing (or enter the Udyam number) |
-| K06 | Fix needed | GSTIN on the certificate fails the checksum and differs from the one entered |
-| K07 | Manual review | Legal name on the certificate differs from the registry (possible tampering) |
-| K10 | Manual review | Signatory is not the applicant, and an LLP has no person to match |
-| K11 | Fix needed | Electricity bill 257 days old (more than 90) |
+| K01 | Not possible as chosen (pass) | GSTIN **Cancelled**: products that need an active GSTIN are blocked; one tap switches to the bundle without them, then Ready. The blank Udyam certificate is optional, never blocking |
+| K02 | Ready (pass) | GST certificate is rotated: straightened before OCR |
+| K03, K08, K09, K12 | Ready (pass) | (only soft notes, e.g. the Udyam registration date) |
+| K04 | Almost ready (fix needed) | GST certificate blurred: re-upload, with photo tips |
+| K05 | Ready (pass) | Udyam certificate missing: optional; adding the number for lookup is offered |
+| K06 | Almost ready (fix needed) | GSTIN on the certificate fails the checksum: "Did you mean 08YK\*\*\*\*\*\*\*\*1ZO (Pooja Shah ...)?" one-tap confirm, then Ready |
+| K07 | Needs a check by our team (manual review) | Legal name on the certificate differs from the registry: our team checks within 4 working hours (MOCK) and asks the owner a question |
+| K10 | Needs a check by our team (manual review) | Signatory is not the registered owner: MOCK signing link to the owner; once signed, Ready |
+| K11 | Almost ready, 80% (fix needed) | Electricity bill 257 days old: "upload a bill dated on or after 16 April 2026" |
 
 ### Gemini setup (optional AI helper for the advisor)
 
@@ -237,6 +267,14 @@ KYC case; no phone, OTP or message text in the log) and `frontend/src/whatsappFl
 `frontend/src/i18n/channelText.test.ts` checks the bot uses the app's wording word for word
 (`backend/src/channels/sharedText.ts` is generated: `cd backend; npx tsx scripts/sync-channel-text.ts; cd ..`).
 
+Add-ons: `backend/tests/readiness/readiness.test.ts` (K01-K12 each give the expected state, blocker
+and fix through the API; lookup preview; partner assistance; MOCK coverage; expired quote;
+every blocker has an action in both languages; save and return; metrics),
+`backend/tests/privacy/privacy.test.ts` (consent purposes and 403 after withdrawal, lookup lists
+only needed documents, masking and log redaction, encrypted files on disk, deletion, retention job,
+withdrawal stops activation), `frontend/src/kycFlow.test.tsx` and `frontend/src/addonsFlow.test.tsx`
+(the screens: lookup, five-section consent, readiness fixes, My data, resume, tracker, back-office).
+
 Back-office: `backend/tests/backoffice/` (sign-in and roles, partner attribution end to end,
 scoring inputs, filters, the past-quarter list against the CSV, KYC approve / reject / lapse,
 Active-GSTIN rule after approval) and `frontend/src/backofficeFlow.test.tsx` (the screens
@@ -283,6 +321,12 @@ against the real backend; only the Python model is replaced by a fake).
 | `GET /api/backoffice/kyc` · `POST /api/backoffice/kyc/:caseId/review` | KYC exceptions queue; `{ decision: approved / rejected, note? }` (operations desk only) |
 | `GET /api/backoffice/attribution` | Leads, quotes, KYC cases, orders and monthly value per partner / sales code |
 | `POST /api/channels/whatsapp/messages` | **MOCK** WhatsApp webhook: header `x-wa-from: <mobile>`, body `{ text, voice? }` or `{ buttonId }` → the bot's replies (text, buttons, lists) |
+| `GET /api/privacy/retention` | Retention periods (one config, marked proposed) and the five consent purposes |
+| `POST /api/kyc/lookup` | Before consent, nothing stored: `{ gstin, hasUdyam, udyamNumber?, quoteId? }` or `{ sampleId }` → masked registry record, documents still needed, readiness preview |
+| `POST /api/kyc/cases/:id/resume` · `GET /api/kyc/cases/:id/my-data` | Save and return; My data (masked holdings, purposes, deletion countdown, deletion log) |
+| `POST /api/kyc/cases/:id/documents/delete` · `DELETE /api/kyc/cases/:id?cancel=true` | Delete the photos now (the result is kept); cancel the application (same deletion as withdrawing) |
+| `POST /api/kyc/cases/:id/alternative` · `/gstin-suggestion` · `/authorisation` · `/authorisation/sign` · `/answers` | No Dead Ends fixes: switch to the offered bundle `{ kind }`, confirm "Did you mean", MOCK signing link for the registered owner, answer the team's question `{ blockerId, answer }` |
+| `GET /api/backoffice/metrics` · `POST /api/backoffice/retention/run` · `GET /api/backoffice/kyc/:caseId/documents/:docType` | One-sitting metrics (admin, sales); retention job `{ asOf? }` and a stored photo (operations desk only) |
 | `POST /api/channels/whatsapp/photo` | **MOCK** WhatsApp photo: header `x-wa-from`, body = the image (`image/png`, `image/jpeg`, `image/webp`, ≤ 8 MB) → read by OCR for the document the bot asked for |
 
 A `profile` is `{ "cityTier": 1 or 2, "employees": n, "sites": n, "gstin": "active" | "inactive" | "none" }`.
@@ -315,21 +359,27 @@ Invoke-RestMethod http://localhost:4000/api/bundles/build -Method Post -ContentT
 
 All services read the `.env` in the repo root (see `.env.example`): `BACKEND_PORT`,
 `AI_SERVICE_PORT`, `AI_SERVICE_URL`, `FRONTEND_PORT`, `LOG_LEVEL`, and for the advisor's AI
-helper `GEMINI_API_KEY`, `GEMINI_MODEL`, `GEMINI_TIMEOUT_SECONDS` (see "Gemini setup"). `.env` is
+helper `GEMINI_API_KEY`, `GEMINI_MODEL`, `GEMINI_TIMEOUT_SECONDS` (see "Gemini setup"), and for
+the encrypted KYC photos `DOCUMENT_ENCRYPTION_KEY` (64 hex characters; make one with
+`node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`; without it a random
+key is used for that run) and `DOCUMENT_STORE_DIR` (default `backend/var/documents`, git-ignored). `.env` is
 git-ignored; never commit secrets. Check with `git status` that `.env` is never listed.
 
 ### Privacy in logs
 
 The backend and the ai-service write JSON log lines in which GSTIN, Udyam, ID, Aadhaar, PAN,
-phone numbers and emails are masked (e.g. `27XUIX******1ZP`), and request bodies, documents and
-images are never logged. Gemini calls log only the model, task, outcome, time and token counts,
+phone numbers and emails are masked (one format everywhere: GSTIN `27XU********1ZP`, Udyam / ID /
+phone the last 4), and request bodies, documents and images are never logged. Gemini calls log only the model, task, outcome, time and token counts,
 never the prompt, the reply or the key.
 
-KYC documents: the image is read by OCR in memory and dropped at once (never written to disk,
-never logged); the log line has only the document type, whether it was readable and the time.
-The app and the API show GSTIN, Udyam, ID and consumer numbers only masked. Withdrawing consent
-deletes the case immediately; in this prototype all KYC data is in memory and also disappears
-when the backend restarts. Orders hold no names or identifiers, and the MOCK payment asks for no
+KYC documents: the ai-service reads the image in memory and keeps nothing; the backend stores
+the photo encrypted (AES-256-GCM, key from `.env`) and deletes it 30 days after verification, at
+once on the owner's request or withdrawal, or when the retention job runs. Log lines have only the
+document type, whether it was readable and the time. The app and the API show GSTIN, Udyam, ID and
+consumer numbers only masked. Withdrawing consent deletes all KYC data immediately (the consent
+record and the deletion log stay as proof) and stops an order that is not activated yet; the
+rest of the KYC data is in memory and also disappears when the backend restarts. See
+[docs/privacy-note.md](docs/privacy-note.md). Orders hold no names or identifiers, and the MOCK payment asks for no
 card or UPI details (only the method and the amount are kept).
 
 ### Troubleshooting

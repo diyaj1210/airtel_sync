@@ -89,16 +89,5 @@ export function fixOcrUdyam(raw: string): string {
   return `${m[1]}-${m[2]}-${digits(m[3]!)}-${digits(m[4]!)}`;
 }
 
-/** Display masks (same as the log masking): 27XUIX******1ZP, UDYAM-MH-00-****696, SYN-ID-***889. */
-export function maskGstin(gstin: string): string {
-  return gstin.length === 15 ? gstin.slice(0, 6) + "******" + gstin.slice(12) : "*".repeat(gstin.length);
-}
-
-export function maskUdyam(udyam: string): string {
-  return udyam.length === 19 ? udyam.slice(0, 12) + "****" + udyam.slice(16) : "*".repeat(udyam.length);
-}
-
-/** Any other document number: only the last 3 characters stay visible. */
-export function maskNumber(value: string): string {
-  return value.length <= 3 ? "*".repeat(value.length) : "*".repeat(value.length - 3) + value.slice(-3);
-}
+/** Display masks: the one masking utility (../masking.ts), also used by the logs. */
+export { maskGstin, maskUdyam, maskIdNumber as maskNumber } from "../masking.js";

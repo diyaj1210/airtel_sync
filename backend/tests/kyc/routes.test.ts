@@ -1,3 +1,4 @@
+import { CONSENT } from "../consent.js";
 import request from "supertest";
 import { describe, expect, it } from "vitest";
 import { MAX_OTP_ATTEMPTS, OTP_TTL_MS, agreementHash, startEsign, verifyEsign, type Agreement } from "../../src/kyc/esign.js";
@@ -6,7 +7,7 @@ import { CONSENT_VERSION, KycCaseStore } from "../../src/kyc/store.js";
 import { makeTestApp } from "../testApp.js";
 import { recordedReader, registries, sampleImage, samples } from "./helpers.js";
 
-const consent = { accepted: true, version: CONSENT_VERSION };
+const consent = CONSENT;
 
 function setup(options: Parameters<typeof makeTestApp>[1] = {}) {
   const reader = recordedReader();
@@ -48,13 +49,19 @@ describe("KYC API: consent", () => {
     expect(res.body.result.status).toBe("not_started");
   });
 
-  it("withdrawing consent deletes the case and everything in it", async () => {
+  it("withdrawing consent deletes everything collected at once; only the consent record and the deletion log stay", async () => {
     const { api, kycStore, logLines } = setup();
     const { caseId } = await runSample(api, "K03");
-    expect(kycStore.size).toBe(1);
-    expect((await api.delete(`/api/kyc/cases/${caseId}`)).body).toEqual({ withdrawn: true, deleted: true });
-    expect(kycStore.size).toBe(0);
-    expect((await api.get(`/api/kyc/cases/${caseId}`)).status).toBe(404);
+    expect((await api.delete(`/api/kyc/cases/${caseId}`)).body).toEqual({ withdrawn: true, deleted: true, deletedOn: "2026-07-15", orderStopped: false });
+    const c = kycStore.get(caseId)!;
+    expect(c.business).toBeNull();
+    expect(c.documents).toEqual({});
+    expect(Object.values(c.files).every((f) => f!.deletedOn === "2026-07-15")).toBe(true);
+    expect(c.consent.withdrawnOn).toBe("2026-07-15");
+    const view = (await api.get(`/api/kyc/cases/${caseId}`)).body;
+    expect(view).toMatchObject({ business: null, withdrawn: { on: "2026-07-15", cancelled: false }, readiness: null });
+    // Nothing more can be collected under a withdrawn consent (403).
+    expect((await api.put(`/api/kyc/cases/${caseId}/business`).send({ sampleId: "K03" })).status).toBe(403);
     expect(logLines.some((l) => l.includes("kyc consent withdrawn"))).toBe(true);
   });
 
@@ -95,9 +102,9 @@ describe("KYC API: business details and lookups", () => {
       .put(`/api/kyc/cases/${caseId}/business`)
       .send({ applicantName: "  Joseph   Singh ", gstin: "27xuixg0767d1zp", hasUdyam: true, udyamNumber: "udyam-mh-00-9516696" });
     expect(res.status).toBe(200);
-    expect(res.body.business).toEqual({ applicantName: "Joseph Singh", gstin: "27XUIX******1ZP", hasUdyam: true, udyamNumber: "UDYAM-MH-00-****696" });
+    expect(res.body.business).toEqual({ applicantName: "Joseph Singh", gstin: "27XU********1ZP", hasUdyam: true, udyamNumber: "UDYAM-**-**-***6696" });
     expect(res.body.registry.gst).toEqual({
-      gstin: "27XUIX******1ZP",
+      gstin: "27XU********1ZP",
       legalName: "Joseph Singh (Prop. Ganesh Woodcraft)",
       tradeName: "Ganesh Woodcraft",
       constitution: "Proprietorship",
@@ -115,11 +122,11 @@ describe("KYC API: business details and lookups", () => {
     const { api } = setup();
     const g = await api.get("/api/lookup/gstin/37IHKXV5167L1ZS");
     expect(g.status).toBe(200);
-    expect(g.body).toMatchObject({ mock: true, found: true, gstin: "37IHKX******1ZS", status: "Cancelled", tradeName: "Vindhya Tours & Travels" });
+    expect(g.body).toMatchObject({ mock: true, found: true, gstin: "37IH********1ZS", status: "Cancelled", tradeName: "Vindhya Tours & Travels" });
     expect((await api.get("/api/lookup/gstin/27AAPFU0939F1ZV")).body).toEqual({ mock: true, found: false });
     expect((await api.get("/api/lookup/gstin/27XUIXG0767D1ZQ")).body).toEqual({ error: "invalid_gstin", problem: "checksum" });
     const u = await api.get("/api/lookup/udyam/UDYAM-KL-00-5521886");
-    expect(u.body).toMatchObject({ mock: true, found: true, udyamNumber: "UDYAM-KL-00-****886", enterpriseName: "Balaji Realty LLP" });
+    expect(u.body).toMatchObject({ mock: true, found: true, udyamNumber: "UDYAM-**-**-***1886", enterpriseName: "Balaji Realty LLP" });
     expect((await api.get("/api/lookup/udyam/UDYAM-KL-00-0000000")).status).toBe(404);
     expect((await api.get("/api/lookup/udyam/nope")).status).toBe(400);
   });
@@ -132,18 +139,18 @@ describe("KYC API: documents", () => {
     expect(reader.calls).toBe(4);
     expect(view.result.status).toBe("pass");
     expect(view.result.issues).toEqual([]);
-    expect(view.documents.gst_certificate.read).toEqual({ gstin: "27XUIX******1ZP", legalName: "Joseph Singh (Prop. Ganesh Woodcraft)", tradeName: "Ganesh Woodcraft" });
-    expect(view.documents.signatory_id.read).toEqual({ name: "Joseph Singh", designation: "Owner", idNumber: "**********889", validTill: "2028-07-04" });
-    expect(view.documents.udyam_certificate.read.udyamNumber).toBe("UDYAM-MH-00-****696");
+    expect(view.documents.gst_certificate.read).toEqual({ gstin: "27XU********1ZP", legalName: "Joseph Singh (Prop. Ganesh Woodcraft)", tradeName: "Ganesh Woodcraft" });
+    expect(view.documents.signatory_id.read).toEqual({ name: "Joseph Singh", designation: "Owner", idNumber: "SYN-ID-**7889", validTill: "2028-07-04" });
+    expect(view.documents.udyam_certificate.read.udyamNumber).toBe("UDYAM-**-**-***6696");
     expect(view.documents.address_proof.read.billDate).toBe("2026-05-30");
   });
 
   it.each([
-    ["K01", "manual_review"],
+    ["K01", "pass"],
     ["K02", "pass"],
     ["K03", "pass"],
     ["K04", "fix_needed"],
-    ["K05", "fix_needed"],
+    ["K05", "pass"],
     ["K06", "fix_needed"],
     ["K07", "manual_review"],
     ["K08", "pass"],
@@ -227,7 +234,7 @@ describe("KYC API: MOCK e-sign", () => {
     const start = await api.post(`/api/kyc/cases/${caseId}/esign/start`);
     expect(start.status).toBe(200);
     expect(start.body).toMatchObject({ mock: true, otp: expect.stringMatching(/^\d{6}$/) });
-    expect(start.body.agreement).toMatchObject({ caseId, business: "Joseph Singh (Prop. Ganesh Woodcraft)", gstin: "27XUIX******1ZP", signatory: "Joseph Singh", date: "2026-07-15" });
+    expect(start.body.agreement).toMatchObject({ caseId, business: "Joseph Singh (Prop. Ganesh Woodcraft)", gstin: "27XU********1ZP", signatory: "Joseph Singh", date: "2026-07-15" });
     const otp: string = start.body.otp;
     const wrong = otp === "000000" ? "111111" : "000000";
     expect((await api.post(`/api/kyc/cases/${caseId}/esign/verify`).send({ otp: wrong })).body).toEqual({ error: "wrong_otp", attemptsLeft: 4 });
@@ -268,7 +275,7 @@ describe("KYC API: privacy and demo samples", () => {
     }
     // Names and addresses read from documents stay out of the log too.
     for (const text of ["Joseph Shah", "Nisha Arora", "Station Road"]) expect(log).not.toContain(text);
-    expect(log).toContain("19EOGX******1ZL"); // the lookup path, masked by the logger
+    expect(log).toContain("19EO********1ZL"); // the lookup path, masked by the logger
   });
 
   it("lists the 12 sample applicants without identifiers and serves their images", async () => {

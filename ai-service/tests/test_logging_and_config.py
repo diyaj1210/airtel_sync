@@ -34,8 +34,8 @@ def test_log_line_is_json_with_masked_message_and_fields(log_stream):
     (entry,) = lines(log_stream)
     assert entry["level"] == "info"
     assert entry["service"] == "ai-service"
-    assert entry["msg"] == "lookup 27XUIX******1ZP"  # a field cannot overwrite msg
-    assert entry["udyam"] == "UDYAM-MH-00-****696"
+    assert entry["msg"] == "lookup 27XU********1ZP"  # a field cannot overwrite msg
+    assert entry["udyam"] == "UDYAM-**-**-***6696"
     assert entry["document"] == "[REDACTED]"
 
 
@@ -48,7 +48,7 @@ def test_exception_text_is_masked_and_traceback_not_logged(log_stream):
     assert "27XUIXG0767D1ZP" not in raw
     assert "Traceback" not in raw
     (entry,) = lines(log_stream)
-    assert entry["error"] == {"name": "ValueError", "message": "bad GSTIN 27XUIX******1ZP"}
+    assert entry["error"] == {"name": "ValueError", "message": "bad GSTIN 27XU********1ZP"}
 
 
 def test_level_filtering(log_stream):
@@ -64,7 +64,7 @@ def test_uvicorn_access_log_lines_are_masked(log_stream):
         '%s - "%s %s HTTP/%s" %d', "127.0.0.1:5000", "GET", "/lookup/27XUIXG0767D1ZP", "1.1", 404
     )
     (entry,) = lines(log_stream)
-    assert entry["msg"] == '127.0.0.1:5000 - "GET /lookup/27XUIX******1ZP HTTP/1.1" 404'
+    assert entry["msg"] == '127.0.0.1:5000 - "GET /lookup/27XU********1ZP HTTP/1.1" 404'
 
 
 def test_health_endpoint_still_works_with_logging_configured(log_stream):

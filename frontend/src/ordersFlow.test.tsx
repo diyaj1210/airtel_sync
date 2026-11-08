@@ -42,10 +42,12 @@ async function quoteAndKyc(u: ReturnType<typeof user>) {
   await u.click(screen.getByRole("button", { name: "Accept this quote" }));
   const quoteId = (await screen.findByTestId("quote-reference")).textContent!;
   await u.click(screen.getByRole("button", { name: "Continue to KYC" }));
-  await u.click(await screen.findByRole("checkbox", { name: /I agree that my details and documents/ }));
-  await u.click(screen.getByRole("button", { name: "Agree and continue" }));
+  // Lookup first (DEMO sample), then consent.
   await u.selectOptions(await screen.findByRole("combobox", { name: "Choose a sample" }), "K03");
   await u.click(screen.getByRole("button", { name: "Use this sample" }));
+  await u.click(await screen.findByRole("button", { name: "Continue" }));
+  await u.click(await screen.findByRole("checkbox", { name: /I agree that my details and documents/ }));
+  await u.click(screen.getByRole("button", { name: "Agree and continue" }));
   await waitFor(() => expect(within(screen.getByTestId("kyc-result")).getByRole("heading", { name: "All checks passed" })).toBeInTheDocument());
   await u.click(screen.getByRole("button", { name: "Sign the agreement" }));
   await u.click(screen.getByRole("button", { name: "Send me a one-time password (MOCK)" }));
@@ -114,10 +116,11 @@ describe("MOCK payment and tracker", () => {
     const u = user();
     renderApp();
     await u.click(screen.getByRole("button", { name: "Complete your KYC" }));
-    await u.click(screen.getByRole("checkbox", { name: /I agree that my details and documents/ }));
-    await u.click(screen.getByRole("button", { name: "Agree and continue" }));
     await u.selectOptions(await screen.findByRole("combobox", { name: "Choose a sample" }), "K08");
     await u.click(screen.getByRole("button", { name: "Use this sample" }));
+    await u.click(await screen.findByRole("button", { name: "Continue" }));
+    await u.click(await screen.findByRole("checkbox", { name: /I agree that my details and documents/ }));
+    await u.click(screen.getByRole("button", { name: "Agree and continue" }));
     await waitFor(() => expect(screen.getByRole("button", { name: "Sign the agreement" })).toBeInTheDocument());
     await u.click(screen.getByRole("button", { name: "Sign the agreement" }));
     await u.click(screen.getByRole("button", { name: "Send me a one-time password (MOCK)" }));

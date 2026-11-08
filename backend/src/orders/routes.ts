@@ -2,7 +2,9 @@ import { Router } from "express";
 import type { Catalogue } from "../catalogue/catalogue.js";
 import { evaluateCase } from "../kyc/review.js";
 import type { Registries } from "../kyc/registry.js";
+import type { KycService } from "../kyc/service.js";
 import type { KycCaseStore } from "../kyc/store.js";
+import type { Blocker } from "../readiness/types.js";
 import type { Logger } from "../logger.js";
 import type { QuoteStore } from "../quote/store.js";
 import { checkout } from "./checkout.js";
@@ -24,9 +26,12 @@ export interface OrderDeps {
   orderStore: OrderStore;
   today: () => string;
   logger: Logger;
+  /** The application behind an order: its open blockers are shown on the tracker (One-Sitting Completion). */
+  kycService?: KycService;
+  nowMs?: () => number;
 }
 
-export function orderView(order: Order) {
+export function orderView(order: Order, blockers: Blocker[] = []) {
   const current = currentStageIndex(order.stages);
   const next = nextStage(order.stages);
   return {
@@ -39,15 +44,24 @@ export function orderView(order: Order) {
     currentStage: order.stages[current]!.stage,
     nextStage: next && { stage: next.stage, expectedOn: next.expectedOn },
     readyOn: order.readyOn,
-    activated: next === null,
+    activated: next === null && !order.stopped,
+    /** Consent withdrawn before activation: the order is stopped. */
+    stopped: order.stopped,
+    /** The application's blockers still open (same objects as the KYC screens show). */
+    blockers: blockers.filter((b) => b.status === "open" || b.status === "in_progress"),
     // Newest first, as in a message inbox.
     notifications: [...order.notifications].reverse(),
   };
 }
 
 export function ordersRouter(deps: OrderDeps): Router {
-  const { catalogue, quoteStore, registries, kycStore, orderStore, today, logger } = deps;
+  const { catalogue, quoteStore, registries, kycStore, orderStore, today, logger, kycService } = deps;
   const router = Router();
+  const view = (order: Order) => {
+    const c = kycService?.get(order.caseId);
+    if (c && !c.withdrawn) kycService!.refresh(c);
+    return orderView(order, c?.blockers ?? []);
+  };
 
   const checkoutFor = (caseId: string) => {
     const kycCase = kycStore.get(caseId);
@@ -73,6 +87,7 @@ export function ordersRouter(deps: OrderDeps): Router {
     const found = checkoutFor(body.caseId);
     if (!found) return void res.status(404).json({ error: "case_not_found" });
     const { kycCase, quote, result } = found;
+    if (kycCase.withdrawn) return void res.status(403).json({ error: "consent_withdrawn" });
     if (!result.canPay) {
       const existing = orderStore.forCase(kycCase.caseId);
       return void res.status(409).json({ error: result.block, ...(existing ? { orderId: existing.orderId } : {}) });
@@ -91,22 +106,24 @@ export function ordersRouter(deps: OrderDeps): Router {
       kycVerifiedOn: kycCase.esign!.signed!.signedOn,
       attributionCode: kycCase.attributionCode ?? quote!.attributionCode,
     });
+    kycCase.journey.orderedMs = deps.nowMs?.() ?? Date.now();
     logger.info("order placed (MOCK payment)", { orderId: order.orderId, caseId: kycCase.caseId, method, totalInr: order.payment.totalInr });
-    res.status(201).json(orderView(order));
+    res.status(201).json(view(order));
   });
 
   router.get("/orders/:orderId", (req, res) => {
     const order = orderStore.get(req.params.orderId);
     if (!order) return void res.status(404).json({ error: "order_not_found" });
-    res.json(orderView(order));
+    res.json(view(order));
   });
 
   router.post("/orders/:orderId/advance", (req, res) => {
     const order = orderStore.get(req.params.orderId);
     if (!order) return void res.status(404).json({ error: "order_not_found" });
+    if (order.stopped) return void res.status(409).json({ error: "consent_withdrawn" });
     if (!orderStore.advance(order)) return void res.status(409).json({ error: "already_activated" });
     logger.info("order stage (MOCK)", { orderId: order.orderId, stage: order.stages[currentStageIndex(order.stages)]!.stage });
-    res.json(orderView(order));
+    res.json(view(order));
   });
 
   return router;

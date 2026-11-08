@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import type { ProductId, Segment } from "../catalogue/types.js";
-import { maskIdentifiers } from "../masking.js";
+import { maskIdentifiers, maskPhone } from "../masking.js";
 import { segmentFor, type Answers } from "./answers.js";
 import { businessFacts } from "./explain.js";
 import { selectedItems } from "./recommend.js";
@@ -69,7 +69,7 @@ export function parseIndianMobile(raw: unknown): string | null {
   return /^[6-9]\d{9}$/.test(digits) ? digits : null;
 }
 
-export const maskPhone = (phone: string) => `******${phone.slice(-4)}`;
+export { maskPhone };
 
 function segmentOf(answers: Answers): Segment | null {
   return answers.businessKind && answers.sites !== undefined ? segmentFor(answers.businessKind, answers.sites) : null;

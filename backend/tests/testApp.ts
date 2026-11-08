@@ -13,6 +13,7 @@ import { createLogger } from "../src/logger.js";
 import { OrderStore } from "../src/orders/store.js";
 import type { PropensityApi } from "../src/propensity/client.js";
 import { QuoteStore } from "../src/quote/store.js";
+import { MemoryVault } from "../src/privacy/vault.js";
 
 export const catalogue = loadCatalogue();
 export const cities = loadCities();
@@ -30,6 +31,7 @@ export function makeTestApp(
   const leadStore = new LeadStore(() => TODAY);
   const kycStore = new KycCaseStore(() => TODAY);
   const orderStore = new OrderStore();
+  const vault = new MemoryVault();
   const app = createApp({
     logger,
     checkAiService: async () => ai,
@@ -45,6 +47,7 @@ export function makeTestApp(
     propensity: options.propensity,
     documentReader: options.documentReader,
     nowMs: options.nowMs,
+    documentVault: vault,
   });
-  return { app, logLines, quoteStore, leadStore, kycStore, orderStore };
+  return { app, logLines, quoteStore, leadStore, kycStore, orderStore, vault };
 }

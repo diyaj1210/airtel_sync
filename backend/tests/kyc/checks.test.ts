@@ -38,11 +38,9 @@ describe("KYC checks: flow states", () => {
     expect(check(business, {}, false).status).toBe("in_progress");
     const r = check(business, {}, true);
     expect(r.status).toBe("fix_needed");
-    expect(r.issues.map((i) => `${i.code}:${i.doc}`)).toEqual([
-      "DOC_MISSING:udyam_certificate",
-      "DOC_MISSING:signatory_id",
-      "DOC_MISSING:address_proof",
-    ]);
+    // Udyam is optional (no product needs it): only a suggestion, never a missing document.
+    expect(r.issues.map((i) => `${i.code}:${i.doc}`)).toEqual(["DOC_MISSING:signatory_id", "DOC_MISSING:address_proof"]);
+    expect(r.warnings.map((w) => w.code)).toEqual(["UDYAM_NOT_PROVIDED"]);
   });
 
   it("lookup first: with a found GSTIN the GST certificate is optional, and a typed Udyam number replaces its certificate", () => {
@@ -58,12 +56,13 @@ describe("KYC checks: flow states", () => {
 });
 
 describe("KYC checks: GSTIN", () => {
-  it("a suspended GSTIN goes to manual review and blocks GSTIN-only products", () => {
+  it("a suspended GSTIN blocks GSTIN-only products (a warning, not a KYC failure on its own)", () => {
     const suspended = [...registries.gst.values()].find((g) => g.status === "Suspended")!;
     const r = check({ applicantName: "Test Person", gstin: suspended.gstin, hasUdyam: false, udyamNumber: null }, {}, false);
     expect(r.gstin).toBe("suspended");
     expect(r.gstinProductsAllowed).toBe(false);
-    expect(r.issues).toEqual([{ code: "GSTIN_INACTIVE", severity: "review", params: { status: "Suspended" } }]);
+    expect(r.issues).toEqual([]);
+    expect(r.warnings).toContainEqual({ code: "GSTIN_INACTIVE", severity: "warning", params: { status: "Suspended" } });
   });
 
   it("a valid GSTIN missing from the registry: fix (check it or upload the certificate); with a matching certificate: review", () => {
@@ -175,37 +174,43 @@ describe("KYC checks: documents", () => {
 });
 
 describe("KYC checks: Udyam", () => {
-  it("a certificate with a blank number when the business says it has Udyam -> fix", () => {
+  it("a certificate with a blank number when the business says it has Udyam -> caught, but optional (warning)", () => {
     const { business, docs } = clean();
     set(docs, "udyam_certificate", "udyamNumber", null);
-    expect(check(business, docs).issues).toEqual([{ code: "UDYAM_NUMBER_BLANK", severity: "fix", doc: "udyam_certificate", params: {} }]);
+    const r = check(business, docs);
+    expect(r.status).toBe("pass");
+    expect(r.warnings).toContainEqual({ code: "UDYAM_NUMBER_BLANK", severity: "warning", doc: "udyam_certificate", params: {} });
   });
 
-  it("typed number and certificate disagree -> fix; number not in the registry -> fix", () => {
+  const warned = (r: { warnings: { code: IssueCode }[] }) => r.warnings.map((w) => w.code);
+
+  it("typed number and certificate disagree, number not in the registry, unreadable number -> caught as warnings (Udyam is optional)", () => {
     let { business, docs } = clean();
-    expect(codes(check({ ...business, udyamNumber: "UDYAM-MH-00-1234567" }, docs))).toContain("UDYAM_NUMBER_MISMATCH");
+    let r = check({ ...business, udyamNumber: "UDYAM-MH-00-1234567" }, docs);
+    expect(warned(r)).toContain("UDYAM_NUMBER_MISMATCH");
+    expect(r.status).toBe("pass");
     ({ business, docs } = clean());
     set(docs, "udyam_certificate", "udyamNumber", "UDYAM-MH-00-1234567");
-    expect(check(business, docs).issues).toEqual([
-      { code: "UDYAM_NOT_FOUND", severity: "fix", doc: "udyam_certificate", params: { source: "certificate" } },
-    ]);
+    r = check(business, docs);
+    expect(r.issues).toEqual([]);
+    expect(r.warnings).toContainEqual({ code: "UDYAM_NOT_FOUND", severity: "warning", doc: "udyam_certificate", params: { source: "certificate" } });
     ({ business, docs } = clean());
     set(docs, "udyam_certificate", "udyamNumber", "UDYAM-MH-0-95");
-    expect(codes(check(business, docs))).toEqual(["UDYAM_FORMAT"]);
+    expect(warned(check(business, docs))).toContain("UDYAM_FORMAT");
   });
 
-  it("a Udyam number of another business, or a tampered certificate name -> review", () => {
+  it("a Udyam number of another business, or a tampered certificate name -> caught and shown to the reviewer, not blocking", () => {
     let { business, docs } = clean();
     delete docs.udyam_certificate;
     const other = [...registries.udyam.values()].find((u) => u.state === "Maharashtra" && u.enterpriseName !== "Ganesh Woodcraft")!;
-    expect(codes(check({ ...business, udyamNumber: other.udyamNumber }, docs))).toEqual(["UDYAM_NAME_MISMATCH"]);
+    expect(warned(check({ ...business, udyamNumber: other.udyamNumber }, docs))).toContain("UDYAM_NAME_MISMATCH");
     const elsewhere = [...registries.udyam.values()].find((u) => u.state !== "Maharashtra")!;
-    expect(codes(check({ ...business, udyamNumber: elsewhere.udyamNumber }, docs))).toContain("UDYAM_STATE_MISMATCH");
+    expect(warned(check({ ...business, udyamNumber: elsewhere.udyamNumber }, docs))).toContain("UDYAM_STATE_MISMATCH");
     ({ business, docs } = clean());
     set(docs, "udyam_certificate", "enterpriseName", "Ganesh Steel Works");
-    expect(check(business, docs).issues).toEqual([
-      { code: "CERT_DETAILS_MISMATCH", severity: "review", doc: "udyam_certificate", params: { field: "enterpriseName" } },
-    ]);
+    const r = check(business, docs);
+    expect(r.issues).toEqual([]);
+    expect(r.warnings).toContainEqual({ code: "CERT_DETAILS_MISMATCH", severity: "warning", doc: "udyam_certificate", params: { field: "enterpriseName" } });
   });
 
   it("an OCR slip in the Udyam number (O for 0) is fixed by position", () => {

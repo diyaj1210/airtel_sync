@@ -7,6 +7,7 @@ import { KycFlow } from "./components/kyc/KycFlow";
 import { CheckoutView } from "./components/orders/CheckoutView";
 import { TrackerView } from "./components/orders/TrackerView";
 import { cleanOrderId, type Order } from "./api/orders";
+import { cleanCaseId, rememberedApplication } from "./api/kyc";
 import { LanguageSwitch } from "./components/LanguageSwitch";
 import { QuoteView } from "./components/QuoteView";
 import { SystemStatus } from "./components/SystemStatus";
@@ -21,7 +22,7 @@ type Screen =
   | { name: "form" }
   | { name: "quote"; request: QuoteRequest; from: "form" | "advisor"; key: number }
   | { name: "accepted"; accepted: AcceptedQuote }
-  | { name: "kyc"; quoteId: string | null; key: number }
+  | { name: "kyc"; quoteId: string | null; key: number; resumeCaseId?: string }
   | { name: "checkout"; caseId: string }
   | { name: "order"; orderId: string; initial?: Order };
 
@@ -65,9 +66,19 @@ export function App({ fetchFn }: { fetchFn?: typeof fetch }) {
     if (orderId) setScreen({ name: "order", orderId });
   };
 
-  const openKyc = (quoteId: string | null) => {
+  const openKyc = (quoteId: string | null, resumeCaseId?: string) => {
     setKycKey((k) => k + 1);
-    setScreen({ name: "kyc", quoteId, key: kycKey + 1 });
+    setScreen({ name: "kyc", quoteId, key: kycKey + 1, ...(resumeCaseId ? { resumeCaseId } : {}) });
+  };
+
+  // Save and return: continue an application with its reference (remembered on this device).
+  const [resumeRef, setResumeRef] = useState(() => rememberedApplication() ?? "");
+  const [resumeError, setResumeError] = useState(false);
+  const resume = (e: FormEvent) => {
+    e.preventDefault();
+    const caseId = cleanCaseId(resumeRef);
+    setResumeError(!caseId);
+    if (caseId) openKyc(null, caseId);
   };
 
   const openQuote = (request: QuoteRequest, from: "form" | "advisor") => {
@@ -146,6 +157,31 @@ export function App({ fetchFn }: { fetchFn?: typeof fetch }) {
                 {t("home.kyc")}
               </button>
             </section>
+            <form className="card form" onSubmit={resume} noValidate aria-labelledby="home-resume-title">
+              <h2 id="home-resume-title" className="card__title">
+                {t("home.resume")}
+              </h2>
+              <p className="muted small">{t("home.resumeHint")}</p>
+              <label className="field__label" htmlFor="home-resume">
+                {t("home.resumeLabel")}
+              </label>
+              <input
+                id="home-resume"
+                className="input input--code"
+                autoCapitalize="characters"
+                autoComplete="off"
+                spellCheck={false}
+                maxLength={20}
+                placeholder="KYC-1A2B3C4D"
+                value={resumeRef}
+                aria-invalid={resumeError ? true : undefined}
+                onChange={(e) => setResumeRef(e.target.value)}
+              />
+              {resumeError && <p className="field-error">{t("home.resumeError")}</p>}
+              <button type="submit" className="button-secondary">
+                {t("home.resumeOpen")}
+              </button>
+            </form>
             <form className="card form" onSubmit={track} noValidate aria-labelledby="home-track-title">
               <h2 id="home-track-title" className="card__title">
                 {t("home.track")}
@@ -208,6 +244,8 @@ export function App({ fetchFn }: { fetchFn?: typeof fetch }) {
           <KycFlow
             key={screen.key}
             quoteId={screen.quoteId}
+            resumeCaseId={screen.resumeCaseId ?? null}
+            onGetQuote={() => setScreen({ name: "form" })}
             onExit={() => setScreen({ name: "home" })}
             onCheckout={(caseId) => setScreen({ name: "checkout", caseId })}
             fetchFn={fetchFn}

@@ -1,6 +1,7 @@
 # Build Plan (prototype)
 
-Build in this order — each step is one feature branch + PR.
+Build in this order — each step is one feature branch + PR. The add-on features A1 and A2 share
+one branch, `feature/add-ons`, at the user's request.
 
 | # | Branch | Deliverable | Done when |
 |---|---|---|---|
@@ -13,6 +14,8 @@ Build in this order — each step is one feature branch + PR.
 | 6 | `feature/propensity` | Train model on leads (no leakage columns), `/score` API with top reasons, test AUC reported | scores shown in back-office |
 | 7 | `feature/backoffice` | Leads the advisor could not close + reason, KYC exceptions queue, partner attribution, filters | demo-ready table with filters |
 | 8 | `feature/whatsapp-voice` | WhatsApp-style chat simulator + voice input (reuses the same APIs) | full journey possible in chat |
+| A1 | `feature/add-ons` | **One-Sitting Completion + No Dead Ends**: readiness check before any upload (states Not possible / Partner help / Needs review / Almost ready / Ready, percentage, expected time, install date from the shared timeline); blockers with an action each, kept on the application, shown in the app, the tracker and the back-office; fixes for K01-K12; save and return; one-sitting metrics | K01-K12 each give the expected state + blocker + fix (tests); no screen without a next action; card and blockers in Hindi and English |
+| A2 | `feature/add-ons` | **Privacy inside the journey (DPDP)**: lookup-first screen; five-section consent listing only what is still needed, separate optional marketing; server-side consent enforcement (403); one masking utility; encrypted document storage + retention job + deletion log; My data page; `docs/privacy-note.md` | upload without consent -> 403; masking and log redaction; deletion removes the file and records the date; withdrawal blocks activation; consent lists only documents still needed |
 | 9 | `docs/submission` | Architecture diagram (components + data flows), 1-page privacy & security note, business case ≤10 slides (target customer, value, pricing or savings, rollout, risks), demo video script ≤3 min | all 4 submission items ready |
 
 ## Demo video (≤ 3 min) storyline

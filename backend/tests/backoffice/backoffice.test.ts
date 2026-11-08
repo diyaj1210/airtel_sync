@@ -1,3 +1,4 @@
+import { CONSENT } from "../consent.js";
 import { readFileSync } from "node:fs";
 import request from "supertest";
 import { describe, expect, it } from "vitest";
@@ -88,7 +89,7 @@ const MICRO = { segment: "micro", variant: "standard", profile: { cityTier: 1, e
 
 /** Consent -> sample applicant -> documents -> submit. */
 async function kycCase(api: Api, sampleId: string, extra: Record<string, unknown> = {}): Promise<string> {
-  const c = await api.post("/api/kyc/cases").send({ consent: { accepted: true, version: CONSENT_VERSION }, lang: "en", ...extra });
+  const c = await api.post("/api/kyc/cases").send({ consent: CONSENT, lang: "en", ...extra });
   expect(c.status).toBe(201);
   const caseId = c.body.caseId as string;
   await api.put(`/api/kyc/cases/${caseId}/business`).send({ sampleId });
@@ -377,12 +378,12 @@ describe("KYC exceptions queue", () => {
     expect(credit).not.toHaveProperty("direct");
   });
 
-  it("approval never unlocks products that need an Active GSTIN (K01: cancelled GSTIN)", async () => {
+  it("a cancelled GSTIN (K01) needs no review, and nothing unlocks products that need an Active GSTIN", async () => {
     const { api } = setup();
     const quote = await api.post("/api/quotes").send({ ...MICRO, include: ["P15"] }); // WhatsApp API needs an Active GSTIN
     const caseId = await kycCase(api, "K01", { quoteId: quote.body.quoteId });
     const t = await signIn(api, "ADM-01");
-    expect((await api.post(`/api/backoffice/kyc/${caseId}/review`).set(as(t)).send({ decision: "approved" })).status).toBe(200);
+    expect((await api.post(`/api/backoffice/kyc/${caseId}/review`).set(as(t)).send({ decision: "approved" })).body.error).toBe("not_for_review");
     const owner = (await api.get(`/api/kyc/cases/${caseId}`)).body.result;
     expect(owner).toMatchObject({ status: "pass", gstinProductsAllowed: false });
     expect(owner.blockedProducts.map((p: { productId: string }) => p.productId)).toContain("P15");
@@ -458,7 +459,7 @@ describe("partner attribution", () => {
     for (const code of ["ADM-01", "PTR-99", "hello", 42]) {
       expect((await api.post("/api/advisor/sessions").send({ lang: "en", attributionCode: code })).status).toBe(400);
       expect((await api.post("/api/quotes").send({ ...MICRO, attributionCode: code })).status).toBe(400);
-      expect((await api.post("/api/kyc/cases").send({ consent: { accepted: true, version: CONSENT_VERSION }, attributionCode: code })).status).toBe(400);
+      expect((await api.post("/api/kyc/cases").send({ consent: CONSENT, attributionCode: code })).status).toBe(400);
     }
     expect((await api.post("/api/advisor/sessions").send({ lang: "en", attributionCode: null })).status).toBe(201);
   });

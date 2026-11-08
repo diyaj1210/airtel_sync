@@ -114,7 +114,7 @@ def test_understand_returns_the_model_json_and_masks_identifiers_in_the_prompt()
     assert call["temperature"] == 0
     sent = call["system"] + call["prompt"]
     assert GSTIN not in sent and "9876543210" not in sent
-    assert "27XUIX******1ZP" in call["prompt"]
+    assert "27XU********1ZP" in call["prompt"]
     assert "EXPECTING: employees" in call["prompt"]
     assert "English" in call["system"]
 

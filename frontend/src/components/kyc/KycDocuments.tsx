@@ -106,6 +106,37 @@ function DocSlot({
         </p>
       )}
       {!locked && (
+        <details className="doc-info" data-testid={`doc-info-${doc}`}>
+          <summary>{t("docinfo.title")}</summary>
+          <dl className="kyc-read">
+            <div>
+              <dt>{t("docinfo.contains")}</dt>
+              <dd>{t(`docinfo.contains.${doc}`)}</dd>
+            </div>
+            <div>
+              <dt>{t("docinfo.why")}</dt>
+              <dd>{t(`docinfo.why.${doc}`)}</dd>
+            </div>
+            <div>
+              <dt>{t("docinfo.formats")}</dt>
+              <dd>{t("docinfo.formats.value")}</dd>
+            </div>
+            <div>
+              <dt>{t("docinfo.checks")}</dt>
+              <dd>{t(`docinfo.checks.${doc}`)}</dd>
+            </div>
+            <div>
+              <dt>{t("docinfo.unreadable")}</dt>
+              <dd>{t("docinfo.unreadable.value")}</dd>
+            </div>
+            <div>
+              <dt>{t("docinfo.lookup")}</dt>
+              <dd>{t(view.need === "required" ? `docinfo.lookup.${doc}` : "docinfo.lookup.notNeeded")}</dd>
+            </div>
+          </dl>
+        </details>
+      )}
+      {!locked && (
         <div className="kyc-doc__actions">
           <input id={inputId} type="file" accept={ACCEPTED_IMAGES} className="visually-hidden" disabled={busy} onChange={(e) => void pick(e)} />
           <label htmlFor={inputId} className={`button-secondary button-small${busy ? " is-disabled" : ""}`}>

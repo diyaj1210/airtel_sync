@@ -45,7 +45,14 @@ export function caseView(kycCase: KycCase, evaluation: CaseEvaluation, quote: Ac
   const { gst, udyam } = evaluation.registry;
   return {
     caseId: kycCase.caseId,
-    consent: { version: kycCase.consent.version, acceptedOn: kycCase.consent.acceptedOn },
+    consent: {
+      id: kycCase.consent.id,
+      version: kycCase.consent.noticeVersion,
+      acceptedOn: kycCase.consent.acceptedOn,
+      purposes: kycCase.consent.purposes,
+      marketing: kycCase.consent.marketing,
+      channel: kycCase.consent.channel,
+    },
     quoteId: kycCase.quoteId,
     sampleId: kycCase.sampleId,
     business: business && {
@@ -111,7 +118,7 @@ export function agreementFor(kycCase: KycCase, evaluation: CaseEvaluation, quote
           contractMonths: quote.quote.totals.contractMonths,
         }
       : null,
-    consentVersion: kycCase.consent.version,
+    consentVersion: kycCase.consent.noticeVersion,
     date: today,
   };
 }

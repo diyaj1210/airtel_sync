@@ -26,6 +26,11 @@ export interface Order {
   notifications: TrackerNotification[];
   /** Partner / sales code credited with the order (back-office only; not shown to the owner), or null. */
   attributionCode: string | null;
+  /**
+   * The owner withdrew consent before activation: the order is stopped (it is not activated).
+   * Records already completed (payment, the order itself) are kept, as the law requires.
+   */
+  stopped: { on: string; reason: "consent_withdrawn" } | null;
 }
 
 const hexId = (prefix: string) => () => `${prefix}-${randomBytes(4).toString("hex").toUpperCase()}`;
@@ -82,6 +87,7 @@ export class OrderStore {
       readyOn: plan.readyOn,
       notifications: [],
       attributionCode: input.attributionCode ?? null,
+      stopped: null,
     };
     // The two stages already done when the order is placed.
     for (const stage of plan.stages.filter((s) => s.doneOn)) order.notifications.push(notificationFor(order.notifications.length + 1, stage, plan.readyOn));
@@ -95,6 +101,7 @@ export class OrderStore {
    * Returns null when the order is already activated.
    */
   advance(order: Order): Order | null {
+    if (order.stopped) return null;
     const next = order.stages[currentStageIndex(order.stages) + 1];
     if (!next) return null;
     next.doneOn = next.expectedOn;
@@ -108,6 +115,14 @@ export class OrderStore {
 
   list(): Order[] {
     return [...this.orders.values()];
+  }
+
+  /** Consent withdrawn: stop the order unless it is already activated. Returns whether it stopped. */
+  stop(caseId: string, on: string): boolean {
+    const order = this.forCase(caseId);
+    if (!order || order.stopped || order.stages.every((s) => s.doneOn)) return false;
+    order.stopped = { on, reason: "consent_withdrawn" };
+    return true;
   }
 
   forCase(caseId: string): Order | undefined {

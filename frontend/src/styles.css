@@ -1483,3 +1483,184 @@ p {
 .wa__send:disabled {
   opacity: 0.5;
 }
+
+/* ---- One-Sitting Completion (add-on) ---- */
+.readiness {
+  border-width: 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.readiness--ok {
+  border-color: var(--color-ok-text);
+}
+
+.readiness--unknown {
+  border-color: #8a5a00;
+}
+
+.readiness--down {
+  border-color: var(--color-down-text);
+}
+
+.readiness__percent {
+  font-weight: 600;
+}
+
+.readiness__bar {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--color-unknown-bg);
+  overflow: hidden;
+}
+
+.readiness__bar > span {
+  display: block;
+  height: 100%;
+  background: var(--color-ok-text);
+}
+
+.readiness__alt {
+  font-weight: 600;
+  color: var(--color-down-text);
+}
+
+.blockers__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.blocker {
+  padding: 10px;
+  border: 1px solid var(--color-border);
+  border-left-width: 4px;
+  border-radius: 8px;
+  background: var(--color-surface);
+  overflow-wrap: anywhere;
+}
+
+.blocker--hard {
+  border-left-color: var(--color-down-text);
+}
+
+.blocker--customer {
+  border-left-color: var(--color-primary);
+}
+
+.blocker--accel_ops,
+.blocker--partner,
+.blocker--installer {
+  border-left-color: #8a5a00;
+}
+
+.blocker__message {
+  font-weight: 600;
+}
+
+.blocker__actions,
+.blocker__question,
+.blocker__demo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.blocker__demo {
+  padding: 8px;
+  border: 1px dashed #8a5a00;
+  border-radius: 8px;
+}
+
+.link-button--inline {
+  min-height: 0;
+  display: inline;
+  font-size: inherit;
+}
+
+/* ---- Privacy inside the journey (add-on) ---- */
+.lookup__summary {
+  margin: 8px 0;
+  font-weight: 600;
+}
+
+.consent-section ul {
+  margin: 4px 0;
+  padding-left: 20px;
+}
+
+.doc-info {
+  margin-top: 6px;
+  font-size: 0.875rem;
+}
+
+.doc-info summary {
+  cursor: pointer;
+  color: var(--color-primary);
+  min-height: 32px;
+}
+
+.my-data {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.my-data ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.my-data__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* A destructive secondary button (Withdraw my consent): outlined in red, readable. */
+.button-secondary.button-danger {
+  background: var(--color-surface);
+  border-color: var(--color-down-text);
+  color: var(--color-down-text);
+}
+
+/* ---- Back-office additions ---- */
+.bo-photos {
+  list-style: none;
+  margin: 6px 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.bo-photo {
+  max-width: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+}
+
+.bo-tiles {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 8px;
+}
+
+.bo-tile {
+  padding: 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+}
+
+.bo-tile dd {
+  margin: 4px 0 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+}

@@ -1,128 +1,123 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState } from "react";
 import {
   fetchSampleImage,
   KycError,
   listSamples,
+  lookupKyc,
+  rememberApplication,
+  resumeKyc,
   saveBusiness,
   startKyc,
   submitKyc,
   uploadDocument,
   withdrawConsent,
-  type BusinessInput,
+  type DocType,
   type KycCase,
+  type Lookup,
 } from "../../api/kyc";
 import { formatDate } from "../../format";
 import type { MessageKey } from "../../i18n/en";
 import { useI18n } from "../../i18n/I18nProvider";
-import { KycBusiness } from "./KycBusiness";
+import { KycBusiness, type Identifiers } from "./KycBusiness";
 import { KycDocuments } from "./KycDocuments";
 import { KycEsign } from "./KycEsign";
+import { KycLookup, KycName } from "./KycLookup";
+import { KycConsent, MyDataView } from "./KycPrivacy";
+import { BlockerHistory, ReadinessCard } from "./ReadinessCard";
 
-type Step = "consent" | "business" | "documents" | "esign" | "done" | "withdrawn";
+/**
+ * Smart KYC, lookup first (privacy + One-Sitting Completion add-ons):
+ *   1. business identifiers (GSTIN, Udyam) or a DEMO sample  -> public registry lookup, nothing stored
+ *   2. what the lookup found + the readiness preview + the documents still needed
+ *   3. consent (five sections, listing only what is still needed)          -> the case is created
+ *   4. the applicant's name                                                -> 5. documents, with the
+ *      readiness card and a fix for every blocker -> 6. MOCK e-sign -> done. "My data" on every step.
+ */
+type Step = "identify" | "lookup" | "consent" | "name" | "documents" | "esign" | "done" | "withdrawn" | "mydata";
 
 const errorKey = (err: unknown): MessageKey => (err instanceof KycError && err.code === "network" ? "kyc.network" : "kyc.error");
 
-/** The consent notice (DPDP Act 2023): what, why, how, how long, how to withdraw. Shown before anything is collected. */
-function KycConsent({ onAgree, onCancel }: { onAgree: () => Promise<void>; onCancel: () => void }) {
-  const { t } = useI18n();
-  const [agreed, setAgreed] = useState(false);
-  const [error, setError] = useState<MessageKey | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  const submit = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!agreed) return setError("kyc.consent.agreeError");
-    setBusy(true);
-    setError(null);
-    try {
-      await onAgree();
-    } catch (err) {
-      setError(errorKey(err));
-      setBusy(false);
-    }
-  };
-
-  const sections: [MessageKey, MessageKey][] = [
-    ["kyc.consent.whatTitle", "kyc.consent.what"],
-    ["kyc.consent.whyTitle", "kyc.consent.why"],
-    ["kyc.consent.howTitle", "kyc.consent.how"],
-    ["kyc.consent.keepTitle", "kyc.consent.keep"],
-    ["kyc.consent.withdrawTitle", "kyc.consent.withdraw"],
-  ];
-  return (
-    <form className="card form" onSubmit={(e) => void submit(e)} noValidate aria-labelledby="kyc-consent-title">
-      <h2 id="kyc-consent-title" className="hero__title">
-        {t("kyc.consent.title")}
-      </h2>
-      <p>{t("kyc.consent.intro")}</p>
-      {sections.map(([title, body]) => (
-        <div key={title} className="consent-section">
-          <h3 className="consent-section__title">{t(title)}</h3>
-          <p>{t(body)}</p>
-        </div>
-      ))}
-      <p className="muted small">{t("kyc.consent.prototype")}</p>
-      <label className="radio-row">
-        <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} aria-invalid={error === "kyc.consent.agreeError" ? true : undefined} />
-        {t("kyc.consent.agree")}
-      </label>
-      {error && (
-        <p className="field-error" role="alert">
-          {t(error)}
-        </p>
-      )}
-      <button type="submit" className="button-primary" disabled={busy}>
-        {t("kyc.consent.continue")}
-      </button>
-      <button type="button" className="link-button" onClick={onCancel}>
-        {t("kyc.consent.notNow")}
-      </button>
-    </form>
-  );
-}
-
 export function KycFlow({
   quoteId,
+  resumeCaseId,
   onExit,
   onCheckout,
+  onGetQuote,
   fetchFn,
 }: {
   quoteId: string | null;
+  /** Save and return: open an existing application by its reference. */
+  resumeCaseId?: string | null;
   onExit: () => void;
   /** After signing: pay and place the order (step 5). */
   onCheckout?: (caseId: string) => void;
+  /** No quote yet: get one (the verification is kept). */
+  onGetQuote?: () => void;
   fetchFn?: typeof fetch;
 }) {
   const { t, lang } = useI18n();
-  const [step, setStep] = useState<Step>("consent");
+  const [step, setStep] = useState<Step>(resumeCaseId ? "documents" : "identify");
+  const [back, setBack] = useState<Step>("identify");
   const [kyc, setKyc] = useState<KycCase | null>(null);
+  const [lookup, setLookup] = useState<Lookup | null>(null);
+  const [identifiers, setIdentifiers] = useState<Identifiers | null>(null);
+  const [sampleId, setSampleId] = useState<string | null>(null);
   const [confirmWithdraw, setConfirmWithdraw] = useState(false);
   const [error, setError] = useState<MessageKey | null>(null);
   const [progress, setProgress] = useState<{ n: number; total: number } | null>(null);
+  const [resuming, setResuming] = useState(!!resumeCaseId);
 
-  const agree = async () => {
-    setKyc(await startKyc(lang, quoteId, fetchFn));
-    setStep("business");
+  const stepFor = (k: KycCase): Step => (k.withdrawn ? "withdrawn" : k.esign?.signed ? "done" : !k.business ? "identify" : "documents");
+
+  // Save and return: reopen the application with its blockers.
+  useEffect(() => {
+    if (!resumeCaseId) return;
+    let live = true;
+    resumeKyc(resumeCaseId, fetchFn).then(
+      (k) => {
+        if (!live) return;
+        setKyc(k);
+        setStep(stepFor(k));
+        setResuming(false);
+      },
+      (err) => {
+        if (!live) return;
+        setError(err instanceof KycError && err.status === 404 ? "kyc.resume.notFound" : errorKey(err));
+        setStep("identify");
+        setResuming(false);
+      },
+    );
+    return () => {
+      live = false;
+    };
+  }, [resumeCaseId, fetchFn]);
+
+  const identify = async (input: Identifiers) => {
+    setLookup(await lookupKyc({ ...input, quoteId }, fetchFn));
+    setIdentifiers(input);
+    setSampleId(null);
+    setStep("lookup");
   };
 
-  const save = async (input: BusinessInput) => {
-    setKyc(await saveBusiness(kyc!.caseId, input, fetchFn));
-    setStep("documents");
+  const pickSample = async (id: string) => {
+    setLookup(await lookupKyc({ sampleId: id, quoteId }, fetchFn));
+    setIdentifiers(null);
+    setSampleId(id);
+    setStep("lookup");
   };
 
-  /** DEMO: fill in a sample applicant and upload its documents one by one, like the owner would. */
-  const applySample = async (sampleId: string) => {
-    const caseId = kyc!.caseId;
-    const sample = (await listSamples(fetchFn)).find((s) => s.id === sampleId);
+  /** DEMO: fill in a sample applicant and upload every document it has, one by one, like the owner would. */
+  const applySample = async (caseId: string, id: string) => {
+    const sample = (await listSamples(fetchFn)).find((s) => s.id === id);
     if (!sample) throw new KycError(404, "sample_not_found");
-    let current = await saveBusiness(caseId, { sampleId }, fetchFn);
+    let current = await saveBusiness(caseId, { sampleId: id }, fetchFn);
     setKyc(current);
     setStep("documents");
     setError(null);
     try {
       for (const [i, doc] of sample.documents.entries()) {
         setProgress({ n: i + 1, total: sample.documents.length });
-        const bytes = await fetchSampleImage(sampleId, doc, fetchFn);
+        const bytes = await fetchSampleImage(id, doc, fetchFn);
         current = await uploadDocument(caseId, doc, { bytes, type: "image/png" }, fetchFn);
         setKyc(current);
       }
@@ -134,44 +129,87 @@ export function KycFlow({
     }
   };
 
+  const agree = async (marketing: boolean) => {
+    const k = kyc ?? (await startKyc(lang, quoteId, fetchFn, marketing));
+    rememberApplication(k.caseId);
+    setKyc(k);
+    if (sampleId) await applySample(k.caseId, sampleId);
+    else setStep("name");
+  };
+
+  const saveName = async (applicantName: string) => {
+    const ids = identifiers ?? { gstin: null, hasUdyam: false, udyamNumber: null };
+    setKyc(await saveBusiness(kyc!.caseId, { applicantName, ...ids }, fetchFn));
+    setStep("documents");
+  };
+
   const withdraw = async () => {
     try {
       await withdrawConsent(kyc!.caseId, fetchFn);
-      setKyc(null);
       setConfirmWithdraw(false);
+      setKyc(await resumeKyc(kyc!.caseId, fetchFn).catch(() => kyc));
       setStep("withdrawn");
     } catch (err) {
-      // Already gone (e.g. the server restarted): nothing is left to delete.
-      if (err instanceof KycError && err.status === 404) {
-        setKyc(null);
-        setStep("withdrawn");
-      } else setError(errorKey(err));
+      setError(errorKey(err));
     }
   };
 
-  const canWithdraw = kyc !== null && step !== "done" && step !== "withdrawn";
+  const openMyData = () => {
+    setBack(step);
+    setStep("mydata");
+  };
+
+  const focusUpload = (doc: DocType) => {
+    const input = document.getElementById(`kyc-file-${doc}`);
+    input?.scrollIntoView?.({ block: "center" });
+    input?.click();
+  };
+
+  const canWithdraw = kyc !== null && !kyc.withdrawn && step !== "withdrawn" && step !== "mydata";
+  const withdrawnOn = kyc?.withdrawn?.on;
+
+  if (resuming) return <p className="muted">{t("bo.loading")}</p>;
 
   return (
     <div className="kyc">
       {kyc && step !== "withdrawn" && (
         <p className="muted small kyc__ref" data-testid="kyc-reference">
           {t("kyc.reference", { id: kyc.caseId })}
+          {step !== "mydata" && (
+            <>
+              {" · "}
+              <button type="button" className="link-button link-button--inline" onClick={openMyData}>
+                {t("mydata.open")}
+              </button>
+            </>
+          )}
         </p>
       )}
 
-      {step === "consent" && <KycConsent onAgree={agree} onCancel={onExit} />}
+      {step === "identify" && <KycBusiness onSave={identify} onSample={pickSample} fetchFn={fetchFn} />}
 
-      {step === "business" && <KycBusiness onSave={save} onSample={applySample} fetchFn={fetchFn} />}
+      {step === "lookup" && lookup && <KycLookup lookup={lookup} onContinue={() => setStep(kyc ? (sampleId ? "documents" : "name") : "consent")} onChange={() => setStep("identify")} />}
 
-      {step === "documents" && kyc && (
-        <KycDocuments
-          kyc={kyc}
-          onChange={setKyc}
-          onEdit={() => setStep("business")}
-          onSign={() => setStep("esign")}
-          progress={progress}
+      {step === "consent" && lookup && (
+        <KycConsent
+          documentsNeeded={lookup.documentsNeeded}
+          identifiers={{ gstin: !!lookup.registry.gst || !!identifiers?.gstin, udyam: !!identifiers?.udyamNumber }}
+          onAgree={agree}
+          onCancel={onExit}
           fetchFn={fetchFn}
         />
+      )}
+
+      {step === "name" && <KycName onSave={saveName} />}
+
+      {step === "documents" && kyc && (
+        <>
+          {kyc.readiness && (
+            <ReadinessCard readiness={kyc.readiness} kyc={kyc} onChange={setKyc} onUpload={focusUpload} onGetQuote={onGetQuote} fetchFn={fetchFn} />
+          )}
+          <KycDocuments kyc={kyc} onChange={setKyc} onEdit={() => setStep("identify")} onSign={() => setStep("esign")} progress={progress} fetchFn={fetchFn} />
+          <BlockerHistory history={kyc.blockerHistory ?? []} />
+        </>
       )}
 
       {step === "esign" && kyc && (
@@ -212,10 +250,25 @@ export function KycFlow({
       {step === "withdrawn" && (
         <section className="card" role="status">
           <p>{t("kyc.withdrawn")}</p>
+          {withdrawnOn && <p className="small">{t("mydata.deletedOn", { date: formatDate(withdrawnOn, lang) })}</p>}
+          {kyc && (
+            <button type="button" className="button-secondary" onClick={openMyData}>
+              {t("mydata.open")}
+            </button>
+          )}
           <button type="button" className="button-secondary" onClick={onExit}>
             {t("kyc.done.home")}
           </button>
         </section>
+      )}
+
+      {step === "mydata" && kyc && (
+        <MyDataView
+          caseId={kyc.caseId}
+          onBack={() => setStep(kyc.withdrawn ? "withdrawn" : back)}
+          onDeleted={() => void resumeKyc(kyc.caseId, fetchFn).then(setKyc, () => undefined)}
+          fetchFn={fetchFn}
+        />
       )}
 
       {error && (

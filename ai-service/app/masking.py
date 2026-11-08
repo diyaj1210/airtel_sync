@@ -26,11 +26,11 @@ def _mask_email(m: str) -> str:
 _RULES: list[tuple[re.Pattern[str], Callable[[str], str]]] = [
     # 15-char GSTIN, deliberately loose so invalid / OCR-garbled GSTINs are masked too.
     (re.compile(r"\b\d{2}[A-Z0-9]{10}[0-9A-Z]Z[0-9A-Z]\b", re.IGNORECASE | re.ASCII),
-     lambda m: m[:6] + _stars(6) + m[12:]),
+     lambda m: m[:4] + _stars(8) + m[12:]),
     (re.compile(r"\bUDYAM-[A-Z]{2}-\d{2}-\d{7}\b", re.IGNORECASE | re.ASCII),
-     lambda m: m[:12] + _stars(4) + m[16:]),
+     lambda m: "UDYAM-" + re.sub(r"[A-Za-z0-9]", "*", m[6:15]) + m[15:]),
     (re.compile(r"\bSYN-ID-\d{4,}\b", re.IGNORECASE | re.ASCII),
-     lambda m: m[:7] + _stars(len(m) - 10) + m[-3:]),
+     lambda m: m[:7] + (_stars(len(m) - 7) if len(m) - 7 <= 4 else _stars(len(m) - 11) + m[-4:])),
     # Aadhaar-like 12 digits
     (re.compile(r"(?<![\d*])\d{4}[ -]?\d{4}[ -]?\d{4}(?![\d*])", re.ASCII),
      lambda m: _stars(len(m) - 4) + m[-4:]),

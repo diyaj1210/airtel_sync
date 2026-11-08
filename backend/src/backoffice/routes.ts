@@ -5,6 +5,7 @@ import type { Registries } from "../kyc/registry.js";
 import { evaluateCase, issueKey, MAX_REVIEW_NOTE, REVIEW_DECISIONS, type ReviewDecision } from "../kyc/review.js";
 import { CASE_ID_RE, type KycCase, type KycCaseStore } from "../kyc/store.js";
 import { caseView } from "../kyc/view.js";
+import type { KycService } from "../kyc/service.js";
 import type { Logger } from "../logger.js";
 import { maskIdentifiers } from "../masking.js";
 import type { OrderStore } from "../orders/store.js";
@@ -47,9 +48,21 @@ export interface BackofficeDeps {
   scoring: BackofficeScoring;
   today: () => string;
   logger: Logger;
+  /** Readiness, blockers, encrypted documents and the retention job (add-on features). */
+  kycService: KycService;
 }
 
 export const CRM_PAGE_SIZE = 25;
+/** "Completed in one sitting": paid without leaving and coming back, within an hour of consent. */
+export const ONE_SITTING_MS = 60 * 60 * 1000;
+
+/** What an image's first bytes say it is (stored photos are kept without a content type). */
+function imageType(bytes: Buffer): string {
+  if (bytes.subarray(0, 4).toString("hex") === "89504e47") return "image/png";
+  if (bytes.subarray(0, 3).toString("hex") === "ffd8ff") return "image/jpeg";
+  if (bytes.subarray(0, 4).toString("latin1") === "RIFF" && bytes.subarray(8, 12).toString("latin1") === "WEBP") return "image/webp";
+  return "application/octet-stream";
+}
 
 const staffCard = (s: StaffMember) => ({ code: s.code, name: s.name, role: s.role, area: s.area });
 const attributionCard = (code: string | null) => {
@@ -206,6 +219,8 @@ export function backofficeRouter(deps: BackofficeDeps): Router {
   // ---- KYC exceptions queue ----
   type QueueStatus = "needs_review" | "waiting_for_owner" | "approved" | "rejected";
   function queueItem(c: KycCase) {
+    if (c.withdrawn) return null;
+    const { readiness } = deps.kycService.refresh(c);
     const evaluation = evaluateCase(c, registries, today());
     const queueStatus: QueueStatus | null =
       evaluation.review?.decision === "approved"
@@ -229,6 +244,9 @@ export function backofficeRouter(deps: BackofficeDeps): Router {
       quote: quote ? { quoteId: quote.quoteId, bundle: quote.quote.name, monthlyInr: quote.quote.totals.monthlyInr } : null,
       orderId: orderStore.forCase(c.caseId)?.orderId ?? null,
       case: caseView(c, evaluation, quote, catalogue),
+      // One-Sitting Completion: the readiness state and the blockers (with the owner's answers).
+      readiness: readiness && { state: readiness.state, percent: readiness.percent, blockers: readiness.blockers },
+      documentsStored: (Object.entries(c.files) as [string, { deletedOn: string | null }][]).filter(([, f]) => !f.deletedOn).map(([d]) => d),
     };
   }
   const QUEUE_ORDER: QueueStatus[] = ["needs_review", "waiting_for_owner", "rejected", "approved"];
@@ -266,6 +284,54 @@ export function backofficeRouter(deps: BackofficeDeps): Router {
     c.review = { decision, by: staff.code, on: today(), note: note === "" ? null : maskIdentifiers(note), issueKey: issueKey(raw.issues) };
     logger.info("kyc reviewed", { caseId: c.caseId, decision, by: staff.code, issues: raw.issues.map((i) => i.code) });
     res.json(queueItem(c));
+  });
+
+  /** A stored document photo, decrypted for the operations desk only (never cached; each view is logged). */
+  router.get("/backoffice/kyc/:caseId/documents/:docType", adminOnly, (req, res) => {
+    const caseId = String(req.params.caseId);
+    const c = CASE_ID_RE.test(caseId) ? kycStore.get(caseId) : undefined;
+    const file = c && !c.withdrawn ? c.files[String(req.params.docType) as keyof KycCase["files"]] : undefined;
+    const bytes = file && !file.deletedOn ? deps.kycService.d.vault.get(file.fileId) : null;
+    if (!bytes) return void res.status(404).json({ error: "document_not_found" });
+    logger.info("kyc document viewed", { caseId, docType: req.params.docType, by: staffOf(res).code });
+    res.set("cache-control", "no-store").type(imageType(bytes)).send(bytes);
+  });
+
+  /** Retention job, run by hand for the demo (it also runs on a schedule in the server). DEMO: `asOf` a later date. */
+  router.post("/backoffice/retention/run", adminOnly, (req, res) => {
+    const asOf = (req.body ?? {}).asOf ?? today();
+    if (typeof asOf !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(asOf) || asOf < today()) {
+      return void res.status(400).json({ error: "invalid_request", details: ["asOf must be a date (YYYY-MM-DD), today or later"] });
+    }
+    res.json({ asOf, ...deps.kycService.runRetention(asOf) });
+  });
+
+  /** One-Sitting Completion metrics. */
+  router.get("/backoffice/metrics", salesOrAdmin, (_req, res) => {
+    const cases = kycStore.list();
+    const live = cases.filter((c) => !c.withdrawn);
+    const states: Record<string, number> = {};
+    for (const c of live) {
+      const state = deps.kycService.refresh(c).readiness?.state ?? "NOT_STARTED";
+      states[state] = (states[state] ?? 0) + 1;
+    }
+    const completed = cases.filter((c) => orderStore.forCase(c.caseId));
+    const oneSitting = completed.filter((c) => c.journey.resumes === 0 && c.journey.orderedMs !== null && c.journey.orderedMs - c.journey.startedMs <= ONE_SITTING_MS);
+    const blockers = cases.flatMap((c) => c.blockers);
+    const resolved = blockers.filter((b) => b.status === "resolved" || b.status === "waived");
+    const auto = resolved.filter((b) => b.resolvedBy === "auto");
+    const pct = (a: number, b: number) => (b === 0 ? 0 : Math.round((a / b) * 100));
+    res.json({
+      journeys: cases.length,
+      withdrawn: cases.length - live.length,
+      completed: completed.length,
+      completedInOneSitting: oneSitting.length,
+      oneSittingPercent: pct(oneSitting.length, cases.length),
+      blockers: { total: blockers.length, resolved: resolved.length, autoResolved: auto.length, autoResolvedPercent: pct(auto.length, resolved.length) },
+      alternativesAccepted: cases.reduce((n, c) => n + c.alternativesAccepted, 0),
+      states,
+      definition: "one sitting = paid within 60 minutes of consent, without leaving and resuming",
+    });
   });
 
   // ---- partner / sales attribution ----

@@ -6,6 +6,32 @@
 
 const stars = (n: number) => "*".repeat(Math.max(n, 0));
 
+/**
+ * The one masking format, used in the UI, the API and the logs (privacy feature):
+ * GSTIN first 4 + last 3 (27XU********1ZP), Udyam / ID numbers / phones the last 4 only.
+ */
+export function maskGstin(gstin: string): string {
+  return gstin.length === 15 ? gstin.slice(0, 4) + stars(8) + gstin.slice(12) : stars(gstin.length);
+}
+
+/** UDYAM-MH-00-9516696 -> UDYAM-**-**-***6696 (the "UDYAM-" prefix and dashes stay). */
+export function maskUdyam(udyam: string): string {
+  if (udyam.length !== 19) return stars(udyam.length);
+  return "UDYAM-" + udyam.slice(6, 15).replace(/[A-Za-z0-9]/g, "*") + udyam.slice(15);
+}
+
+/** Any ID or document number: only the last 4 characters stay visible (a known prefix such as "SYN-ID-" too). */
+export function maskIdNumber(value: string): string {
+  const prefix = /^SYN-ID-/i.exec(value)?.[0] ?? "";
+  const rest = value.slice(prefix.length);
+  return prefix + (rest.length <= 4 ? stars(rest.length) : stars(rest.length - 4) + rest.slice(-4));
+}
+
+/** Phone: last 4 digits. */
+export function maskPhone(phone: string): string {
+  return stars(phone.length - 4) + phone.slice(-4);
+}
+
 interface Rule {
   name: string;
   pattern: RegExp;
@@ -21,17 +47,17 @@ const RULES: Rule[] = [
     // GSTINs (e.g. a failed-checksum one from a document) are masked too.
     name: "gstin",
     pattern: /\b\d{2}[A-Z0-9]{10}[0-9A-Z]Z[0-9A-Z]\b/gi,
-    mask: (m) => m.slice(0, 6) + stars(6) + m.slice(12),
+    mask: (m) => maskGstin(m),
   },
   {
     name: "udyam",
     pattern: /\bUDYAM-[A-Z]{2}-\d{2}-\d{7}\b/gi,
-    mask: (m) => m.slice(0, 12) + stars(4) + m.slice(16),
+    mask: (m) => maskUdyam(m),
   },
   {
     name: "signatory_id",
     pattern: /\bSYN-ID-\d{4,}\b/gi,
-    mask: (m) => m.slice(0, 7) + stars(m.length - 10) + m.slice(-3),
+    mask: (m) => maskIdNumber(m),
   },
   {
     name: "aadhaar",
@@ -41,7 +67,7 @@ const RULES: Rule[] = [
   {
     name: "phone",
     pattern: /(?<![\d*])(?:\+91[ -]?)?[6-9]\d{9}(?![\d*])/g,
-    mask: (m) => stars(m.length - 4) + m.slice(-4),
+    mask: (m) => maskPhone(m),
   },
   {
     name: "pan",
