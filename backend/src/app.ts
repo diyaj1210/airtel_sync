@@ -16,6 +16,8 @@ import { kycRouter } from "./kyc/routes.js";
 import type { SampleApplicant } from "./kyc/samples.js";
 import { KycCaseStore } from "./kyc/store.js";
 import type { Logger } from "./logger.js";
+import { ordersRouter } from "./orders/routes.js";
+import { OrderStore } from "./orders/store.js";
 import { quoteRouter } from "./quote/routes.js";
 import type { QuoteStore } from "./quote/store.js";
 
@@ -47,6 +49,8 @@ export interface AppDeps {
   documentReader?: DocumentReader;
   /** KYC cases (in memory). */
   kycStore?: KycCaseStore;
+  /** Orders placed after the MOCK payment (in memory). */
+  orderStore?: OrderStore;
 }
 
 export function createApp({
@@ -64,6 +68,7 @@ export function createApp({
   kycDocumentsDir,
   documentReader = NO_READER,
   kycStore = new KycCaseStore(() => TODAY),
+  orderStore = new OrderStore(),
 }: AppDeps): Express {
   const gate = new LlmGate(advisorLlm, (kind) => logger.warn("advisor LLM unavailable, answering by rules", { kind }), nowMs);
   const advisor = new AdvisorEngine({ catalogue, cities, gate, logger });
@@ -126,8 +131,10 @@ export function createApp({
       today: () => TODAY,
       nowMs,
       logger,
+      orderFor: (caseId) => orderStore.forCase(caseId)?.orderId ?? null,
     }),
   );
+  app.use("/api", ordersRouter({ catalogue, quoteStore, registries, kycStore, orderStore, today: () => TODAY, logger }));
 
   app.use((_req, res) => {
     res.status(404).json({ error: "not_found" });

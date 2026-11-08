@@ -81,7 +81,18 @@ function KycConsent({ onAgree, onCancel }: { onAgree: () => Promise<void>; onCan
   );
 }
 
-export function KycFlow({ quoteId, onExit, fetchFn }: { quoteId: string | null; onExit: () => void; fetchFn?: typeof fetch }) {
+export function KycFlow({
+  quoteId,
+  onExit,
+  onCheckout,
+  fetchFn,
+}: {
+  quoteId: string | null;
+  onExit: () => void;
+  /** After signing: pay and place the order (step 5). */
+  onCheckout?: (caseId: string) => void;
+  fetchFn?: typeof fetch;
+}) {
   const { t, lang } = useI18n();
   const [step, setStep] = useState<Step>("consent");
   const [kyc, setKyc] = useState<KycCase | null>(null);
@@ -185,6 +196,13 @@ export function KycFlow({ quoteId, onExit, fetchFn }: { quoteId: string | null; 
             {kyc.esign.signed.reference}
           </p>
           <p className="muted small">{formatDate(kyc.esign.signed.signedOn, lang)}</p>
+          {kyc.quoteId && onCheckout ? (
+            <button type="button" className="button-primary" onClick={() => onCheckout(kyc.caseId)}>
+              {t("kyc.done.pay")}
+            </button>
+          ) : (
+            <p className="muted">{t("kyc.done.noQuote")}</p>
+          )}
           <button type="button" className="button-secondary" onClick={onExit}>
             {t("kyc.done.home")}
           </button>

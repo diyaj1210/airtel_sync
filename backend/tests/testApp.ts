@@ -10,6 +10,7 @@ import { loadRegistries } from "../src/kyc/registry.js";
 import { loadSamples } from "../src/kyc/samples.js";
 import { KycCaseStore } from "../src/kyc/store.js";
 import { createLogger } from "../src/logger.js";
+import { OrderStore } from "../src/orders/store.js";
 import { QuoteStore } from "../src/quote/store.js";
 
 export const catalogue = loadCatalogue();
@@ -27,6 +28,7 @@ export function makeTestApp(
   const quoteStore = new QuoteStore(() => TODAY);
   const leadStore = new LeadStore(() => TODAY);
   const kycStore = new KycCaseStore(() => TODAY);
+  const orderStore = new OrderStore();
   const app = createApp({
     logger,
     checkAiService: async () => ai,
@@ -38,8 +40,9 @@ export function makeTestApp(
     registries,
     kycSamples,
     kycStore,
+    orderStore,
     documentReader: options.documentReader,
     nowMs: options.nowMs,
   });
-  return { app, logLines, quoteStore, leadStore, kycStore };
+  return { app, logLines, quoteStore, leadStore, kycStore, orderStore };
 }

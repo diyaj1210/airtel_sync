@@ -36,7 +36,7 @@ S6 propensity · S7 backoffice · S8 whatsapp-voice · S9 submission docs.
 - [x] **R2.14** Toggled add-ons re-checked against the rules; ineligible ones show a reason — S1, S2 *(S2: ineligible add-ons greyed out with the reason in English/Hindi; server re-checks and refuses (422))*
 - [x] **R2.15** One-time setup fee and contract length shown separately and clearly — S2 *(S2: setup, contract and ready time shown separately from the monthly price)*
 - [x] **R2.16** Plain-language product names (the case complains about quotes "with product codes the owner does not understand") — S2 *(S2: product names + translated descriptions and units; no product codes on screen (tested))*
-- [ ] **R2.17** Checkout completes: payment (working mock, labelled) → order created — S5
+- [x] **R2.17** Checkout completes: payment (working mock, labelled) → order created — S5 *(S5: MOCK payment of setup + first month after a signed KYC, method UPI / card / net banking, no payment details asked; a MOCK failure switch shows the retry; one order per KYC case; refused when the quote expired or needs a GSTIN the business lacks)*
 
 ### Smart KYC
 - [x] **R2.18** **Clear consent screen** shown before any KYC data is collected — S4 *(S4: what is collected, why, how, how long it is kept, how to withdraw; a tick box; no case exists until consent is given (API `400 consent_required`; consent version and date recorded); tested)*
@@ -48,8 +48,8 @@ S6 propensity · S7 backoffice · S8 whatsapp-voice · S9 submission docs.
 - [x] **R2.24** e-sign / DigiLocker-style step (working mock, labelled; key question 3) — S4 *(S4: MOCK e-sign after a pass: agreement summary, one-time password shown on screen, wrong-code count, 10-minute expiry, SHA-256 of the signed agreement, case locked after signing)*
 
 ### Tracker
-- [ ] **R2.25** **Order status view** the owner can check instead of calling support — S5
-- [ ] **R2.26** Expected activation dates from `typical_install_days` — S5
+- [x] **R2.25** **Order status view** the owner can check instead of calling support — S5 *(S5: tracker page right after payment and from Home → "Track my order" by reference; current stage, next stage with date, timeline, per-product dates, updates; English + Hindi)*
+- [x] **R2.26** Expected activation dates from `typical_install_days` — S5 *(S5: each product = order date + its install days; bundle = the slowest product; equals the quote's "Ready in"; tested per bundle incl. month boundaries and over 240 profiles)*
 
 ## 3. Stretch goals (PDF p.3)
 
@@ -81,7 +81,7 @@ S6 propensity · S7 backoffice · S8 whatsapp-voice · S9 submission docs.
 - [x] **R6.4** Rule `min_sites`: offered only at or above this number of sites — S1
 - [x] **R6.5** Rule `requires_gstin = Y`: cannot be sold without a **valid, active** GSTIN (Cancelled/Suspended blocks it) — S1, S4 *(S1: rule blocks none/cancelled/suspended; S4: KYC verifies the GSTIN and its registry status; a Cancelled/Suspended GSTIN goes to manual review and the quote's GSTIN-only products are listed as blocked (K01))*
 - [x] **R6.6** Rule `requires_one_of`: needs at least one of the listed products **in the same bundle** (also enforced when the owner removes a product) — S1, S2 *(S1 + S2: removal of a needed product is blocked with 'needed by …')*
-- [ ] **R6.7** `typical_install_days` used for the order tracker **and** expected activation dates — S5
+- [x] **R6.7** `typical_install_days` used for the order tracker **and** expected activation dates — S5
 - [x] **R6.8** Price within catalogue range (`price_min`–`price_max`); setup fee and minimum contract from the catalogue — S1, S2 *(S1 + S2: list price = price_min, per-unit setup, contract = max; matches all 368 past bundles)*
 - [x] **R6.9** "GSTIN lookup" API backed by `mock_gstin_registry.csv` (legal name, address, status incl. cancelled/suspended) — S4
 - [x] **R6.10** "Udyam lookup" API backed by `mock_udyam_registry.csv` — S4
@@ -90,7 +90,7 @@ S6 propensity · S7 backoffice · S8 whatsapp-voice · S9 submission docs.
 - [x] **R6.13** Real GSTIN format check with valid checksum — S4 *(S4: state code, PAN shape, holder type, entity digit, Z, mod-36 checksum; all 3,534 registry GSTINs pass; also checked in the app while typing)*
 - [x] **R6.14** GSTIN validator **accepts `X` as the 4th PAN character** — S4
 - [x] **R6.15** Udyam district code **`00` is accepted** (it is in every record) — S4
-- [ ] **R6.16** "Today" = **2026-07-15** for every date check — S4, S5 *(S4 done: bill age, ID validity, consent and e-sign dates use the injected 2026-07-15, also tested with another "today"; S5 tracker to come)*
+- [x] **R6.16** "Today" = **2026-07-15** for every date check — S4, S5 *(S4 done: bill age, ID validity, consent and e-sign dates use the injected 2026-07-15, also tested with another "today"; S5: order, payment and tracker dates from the injected date, pure functions tested with other dates too)*
 - [x] **R6.17** Address proof no older than **90 days** (bill date ≥ 2026-04-16) — S4 *(S4: 2026-04-16 passes, 2026-04-15 fails, a future date goes to review (tested); K11 caught)*
 - [ ] **R6.18** Never modify files in `data/raw/` — all steps
 
@@ -108,6 +108,6 @@ S6 propensity · S7 backoffice · S8 whatsapp-voice · S9 submission docs.
 
 ## 8. Team quality gates (from CLAUDE.md)
 
-- [ ] **R8.1** Automated tests: rules engine, pricing (S1, S2), advisor scenarios ≥15 (S3), KYC checks + GSTIN checksum + K01–K12 (S4), tracker dates (S5), propensity model (S6) *(S1–S4 done: advisor 21 scenarios × 3 LLM modes; KYC: K01–K12 one test each, check edge cases, GSTIN/Udyam validators on every registry record, OCR on all 47 images, API and UI tests)*
-- [ ] **R8.2** Every mock (payments, e-sign, DigiLocker, WhatsApp API) works and is labelled as a mock — S4, S5, S8 *(S4 done: MOCK e-sign (DigiLocker / Aadhaar-OTP style) and MOCK registry lookups work and are labelled in the UI and the API; payments S5, WhatsApp S8)*
+- [ ] **R8.1** Automated tests: rules engine, pricing (S1, S2), advisor scenarios ≥15 (S3), KYC checks + GSTIN checksum + K01–K12 (S4), tracker dates (S5), propensity model (S6) *(S1–S5 done: advisor 21 scenarios × 3 LLM modes; KYC: K01–K12 one test each, check edge cases, validators on every registry record, OCR on all 47 images; tracker dates per bundle and over 240 profiles; API and UI tests)*
+- [ ] **R8.2** Every mock (payments, e-sign, DigiLocker, WhatsApp API) works and is labelled as a mock — S4, S5, S8 *(S4 done: MOCK e-sign (DigiLocker / Aadhaar-OTP style) and MOCK registry lookups work and are labelled in the UI and the API; S5 done: MOCK payment (with a MOCK failure) and the MOCK "next stage" button, labelled; WhatsApp S8)*
 - [ ] **R8.3** README "how to run" kept current after every step — S0–S9 *(S0: written)*
