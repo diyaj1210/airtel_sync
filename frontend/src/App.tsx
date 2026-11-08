@@ -1,9 +1,12 @@
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import type { AcceptedQuote, BusinessProfile, QuoteRequest, Segment } from "./api/quote";
 import { AcceptedView } from "./components/AcceptedView";
 import { AdvisorChat } from "./components/AdvisorChat";
 import { BusinessForm, EMPTY_FORM, type FormValues } from "./components/BusinessForm";
 import { KycFlow } from "./components/kyc/KycFlow";
+import { CheckoutView } from "./components/orders/CheckoutView";
+import { TrackerView } from "./components/orders/TrackerView";
+import { cleanOrderId, type Order } from "./api/orders";
 import { LanguageSwitch } from "./components/LanguageSwitch";
 import { QuoteView } from "./components/QuoteView";
 import { SystemStatus } from "./components/SystemStatus";
@@ -15,7 +18,9 @@ type Screen =
   | { name: "form" }
   | { name: "quote"; request: QuoteRequest; from: "form" | "advisor"; key: number }
   | { name: "accepted"; accepted: AcceptedQuote }
-  | { name: "kyc"; quoteId: string | null; key: number };
+  | { name: "kyc"; quoteId: string | null; key: number }
+  | { name: "checkout"; caseId: string }
+  | { name: "order"; orderId: string; initial?: Order };
 
 export function App({ fetchFn }: { fetchFn?: typeof fetch }) {
   const { t } = useI18n();
@@ -26,6 +31,16 @@ export function App({ fetchFn }: { fetchFn?: typeof fetch }) {
   const [chatOpen, setChatOpen] = useState(false);
   const [quoteKey, setQuoteKey] = useState(0);
   const [kycKey, setKycKey] = useState(0);
+
+  const [trackRef, setTrackRef] = useState("");
+  const [trackError, setTrackError] = useState(false);
+
+  const track = (e: FormEvent) => {
+    e.preventDefault();
+    const orderId = cleanOrderId(trackRef);
+    setTrackError(!orderId);
+    if (orderId) setScreen({ name: "order", orderId });
+  };
 
   const openKyc = (quoteId: string | null) => {
     setKycKey((k) => k + 1);
@@ -94,6 +109,31 @@ export function App({ fetchFn }: { fetchFn?: typeof fetch }) {
                 {t("home.kyc")}
               </button>
             </section>
+            <form className="card form" onSubmit={track} noValidate aria-labelledby="home-track-title">
+              <h2 id="home-track-title" className="card__title">
+                {t("home.track")}
+              </h2>
+              <p className="muted small">{t("home.trackHint")}</p>
+              <label className="field__label" htmlFor="home-track">
+                {t("home.trackLabel")}
+              </label>
+              <input
+                id="home-track"
+                className="input input--code"
+                autoCapitalize="characters"
+                autoComplete="off"
+                spellCheck={false}
+                maxLength={20}
+                placeholder={t("home.trackPlaceholder")}
+                value={trackRef}
+                aria-invalid={trackError ? true : undefined}
+                onChange={(e) => setTrackRef(e.target.value)}
+              />
+              {trackError && <p className="field-error">{t("home.trackError")}</p>}
+              <button type="submit" className="button-secondary">
+                {t("home.track")}
+              </button>
+            </form>
             <SystemStatus fetchFn={fetchFn} />
           </>
         )}
@@ -126,7 +166,30 @@ export function App({ fetchFn }: { fetchFn?: typeof fetch }) {
           />
         )}
         {screen.name === "kyc" && (
-          <KycFlow key={screen.key} quoteId={screen.quoteId} onExit={() => setScreen({ name: "home" })} fetchFn={fetchFn} />
+          <KycFlow
+            key={screen.key}
+            quoteId={screen.quoteId}
+            onExit={() => setScreen({ name: "home" })}
+            onCheckout={(caseId) => setScreen({ name: "checkout", caseId })}
+            fetchFn={fetchFn}
+          />
+        )}
+        {screen.name === "checkout" && (
+          <CheckoutView
+            caseId={screen.caseId}
+            onPaid={(order) => setScreen({ name: "order", orderId: order.orderId, initial: order })}
+            onViewOrder={(orderId) => setScreen({ name: "order", orderId })}
+            fetchFn={fetchFn}
+          />
+        )}
+
+        {screen.name === "order" && (
+          <>
+            <TrackerView key={screen.orderId} orderId={screen.orderId} initial={screen.initial} fetchFn={fetchFn} />
+            <button type="button" className="link-button" onClick={() => setScreen({ name: "home" })}>
+              {t("track.home")}
+            </button>
+          </>
         )}
       </main>
 

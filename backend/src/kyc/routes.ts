@@ -40,6 +40,8 @@ export interface KycDeps {
   today: () => string;
   nowMs: () => number;
   logger: Logger;
+  /** The order placed for a case, if any (step 5). */
+  orderFor?: (caseId: string) => string | null;
 }
 
 const NAME_RE = /^[\p{L}][\p{L} .'-]{1,79}$/u;
@@ -78,7 +80,8 @@ export function kycRouter(deps: KycDeps): Router {
   const router = Router();
   const quoteOf = (c: KycCase) => (c.quoteId ? quoteStore.get(c.quoteId) : undefined);
   const evaluate = (c: KycCase) => evaluateKyc({ business: c.business, documents: c.documents, submitted: c.submitted }, registries, today());
-  const send = (res: Response, c: KycCase, status = 200) => res.status(status).json(caseView(c, evaluate(c), quoteOf(c), catalogue));
+  const send = (res: Response, c: KycCase, status = 200) =>
+    res.status(status).json({ ...caseView(c, evaluate(c), quoteOf(c), catalogue), orderId: deps.orderFor?.(c.caseId) ?? null });
 
   const findCase = (req: Request, res: Response): KycCase | undefined => {
     const c = store.get(String(req.params.caseId));

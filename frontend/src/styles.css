@@ -976,3 +976,87 @@ p {
 .button-danger {
   background: var(--color-down-text);
 }
+
+/* ---------------------------------------------------------------- tracker (step 5) */
+
+.tracker {
+  display: grid;
+  gap: var(--gutter);
+}
+
+.tracker__ready {
+  display: flex;
+  flex-direction: column;
+  margin: 8px 0;
+}
+
+.tracker__ready strong {
+  font-size: 1.5rem;
+}
+
+.timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.timeline__step {
+  position: relative;
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  column-gap: 10px;
+  padding: 0 0 16px;
+}
+
+.timeline__step:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  left: 13px;
+  top: 28px;
+  bottom: 0;
+  width: 2px;
+  background: var(--color-border);
+}
+
+.timeline__step--done:not(:last-child)::before {
+  background: var(--color-ok-text);
+}
+
+.timeline__dot {
+  grid-row: span 2;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 2px solid var(--color-border);
+  border-radius: 50%;
+  background: var(--color-surface);
+  font-weight: 700;
+}
+
+.timeline__step--done .timeline__dot {
+  border-color: var(--color-ok-text);
+  background: var(--color-ok-bg);
+  color: var(--color-ok-text);
+}
+
+.timeline__name {
+  font-weight: 600;
+}
+
+.updates {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.update {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.update:first-child {
+  border-top: 0;
+}

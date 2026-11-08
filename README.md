@@ -15,8 +15,8 @@ Requirements: [docs/requirements-checklist.md](docs/requirements-checklist.md).
 | `data/raw/` | Synthetic hackathon data (read-only, never modified) | – |
 | `scripts/verify_outline.py` | Checks the outline's bundles and numbers against `data/raw/` | – |
 
-Current state (after step 4): the owner can **chat with an advisor or fill a short form, get a
-quote, and complete KYC on their phone**.
+Current state (after step 5): the owner can **chat with an advisor or fill a short form, get a
+quote, complete KYC, pay (MOCK) and track the order on their phone**.
 - **Advisor chat** (Home → "Chat with our advisor"): type freely in English, Hindi or Hinglish
   ("मेरी जयपुर में किराना दुकान है, 3 लोग") or tap the quick replies. It asks the business type,
   size, locations, city, GSTIN and current tools, recommends a bundle with one monthly price and
@@ -31,12 +31,18 @@ quote, and complete KYC on their phone**.
   (RapidOCR, offline) → every check in `solution_outline_chat/kyc-validation.md` → **Pass / Fix
   needed / Manual review** with the reasons in plain English or Hindi → **MOCK e-sign** with a
   one-time password shown on screen. "Withdraw consent" deletes everything at any time.
+- **Payment and tracker** (KYC done → "Pay and place my order"): **MOCK payment** of the setup fee +
+  first month (UPI / card / net banking, no details asked; a MOCK switch makes it fail to show the
+  retry) → order `ORD-XXXXXXXX` → tracker: KYC verified → payment received → installation
+  scheduled → installed → activated, with the expected date of every product (order date + its
+  `typical_install_days`) and of the whole bundle (the slowest product), plus an update at each
+  stage. Home → "Track my order" opens it again by reference, so there is no need to call.
 
 Every product and price comes from the backend **catalogue rules engine**. The AI helper
 (Gemini, optional) only reads the owner's messages and rewords the engine's facts; every sentence
 it writes is checked before it is shown, and without a key the advisor runs in **basic mode** on
-its own rules. KYC decisions are made by fixed rules too (no AI). Payment and the tracker arrive in
-step 5.
+its own rules. KYC decisions are made by fixed rules too (no AI). Next: the propensity score
+(step 6) and the back-office (step 7).
 
 ## How to run (Windows PowerShell)
 
@@ -92,6 +98,13 @@ models). For example **K03** passes (then **Sign the agreement** → MOCK one-ti
 **K11** is asked for a recent bill (257 days old) and **K07** goes to manual review (the legal
 name on the GST certificate differs from the registry). To upload your own photo, enter the
 details yourself and use **Upload photo** on each document.
+
+**Try payment and the tracker**: start from a quote (Home → **Get my price** → … → **Accept this
+quote** → **Continue to KYC**), do the KYC with sample **K03** and sign, then **Pay and place my
+order** → choose UPI → **Pay … (MOCK)**. The tracker shows when each product will be ready (for
+Office Pro: SIMs 16 July, fibre 20 July 2026) and the updates; the dashed **MOCK: move to the next
+stage** button plays the installation forward on its expected dates. Note the order reference and
+use Home → **Track my order** to open it again.
 
 Expected results (all 12 checked by tests, and live with the real OCR):
 
@@ -199,6 +212,10 @@ if that file no longer matches. After changing the OCR code, rewrite it with
 | `DELETE /api/kyc/cases/:id` | Withdraw consent: the case and all its data are deleted |
 | `GET /api/lookup/gstin/:gstin` · `GET /api/lookup/udyam/:number` | **MOCK** registry lookups (`mock_gstin_registry.csv`, `mock_udyam_registry.csv`), numbers masked |
 | `GET /api/kyc/samples` · `/api/kyc/samples/:id/documents/:docType` | DEMO: the 12 sample applicants and their document images |
+| `GET /api/orders/checkout/:caseId` | What is due now for a signed KYC case (setup + first month) and whether it can be paid |
+| `POST /api/orders` | `{ caseId, method: "upi" or "card" or "netbanking", simulateFailure? }` → **MOCK** payment → order (`ORD-XXXXXXXX`); `402` for a simulated failure, `409` with the reason if it cannot be paid |
+| `GET /api/orders/:orderId` | Order status: stages with done / expected dates, each product's expected date, updates (no personal data) |
+| `POST /api/orders/:orderId/advance` | **MOCK**: the next stage happens on its expected date (demo) |
 
 A `profile` is `{ "cityTier": 1 or 2, "employees": n, "sites": n, "gstin": "active" | "inactive" | "none" }`.
 
@@ -244,7 +261,8 @@ KYC documents: the image is read by OCR in memory and dropped at once (never wri
 never logged); the log line has only the document type, whether it was readable and the time.
 The app and the API show GSTIN, Udyam, ID and consumer numbers only masked. Withdrawing consent
 deletes the case immediately; in this prototype all KYC data is in memory and also disappears
-when the backend restarts.
+when the backend restarts. Orders hold no names or identifiers, and the MOCK payment asks for no
+card or UPI details (only the method and the amount are kept).
 
 ### Troubleshooting
 
