@@ -70,7 +70,7 @@ Completion, privacy inside the journey; branch `feature/add-ons`).
 
 - [ ] **R5.1** Working prototype: **demo video ≤ 3 minutes** — S9
 - [x] **R5.2** Working prototype: **code repository** — S0–S8 *(S0-S8 merged to main on GitHub; every step branch kept)*
-- [ ] **R5.3** **Solution architecture diagram** with the main components and data flows — S9
+- [x] **R5.3** **Solution architecture diagram** with the main components and data flows — S9 *(S9: [docs/architecture/](architecture/README.md) - draw.io file + transparent PNG / SVG, generated from scripts/architecture_diagram.py: people, frontend, backend modules, AI service, external services, data, MOCKs, flows)*
 - [ ] **R5.4** **Business case in ≤ 10 slides** covering target customer, value, pricing or savings, rollout, risks — S9
 - [x] **R5.5** **1-page note on data privacy and security** choices — S9 *(A2: [docs/privacy-note.md](privacy-note.md), one page, written from the implemented code)*
 
