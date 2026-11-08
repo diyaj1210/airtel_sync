@@ -1,14 +1,8 @@
 import request from "supertest";
 import { describe, expect, it } from "vitest";
-import { createApp } from "../../src/app.js";
-import { loadCatalogue } from "../../src/catalogue/catalogue.js";
-import { createLogger } from "../../src/logger.js";
+import { makeTestApp } from "../testApp.js";
 
-const app = createApp({
-  logger: createLogger({ service: "backend", level: "silent" }),
-  checkAiService: async () => ({ status: "ok", version: "0.1.0", latencyMs: 1 }),
-  catalogue: loadCatalogue(),
-});
+const { app } = makeTestApp();
 
 describe("GET /api/catalogue", () => {
   it("returns all 25 products", async () => {

@@ -2,8 +2,11 @@ import express, { type ErrorRequestHandler, type Express, type RequestHandler } 
 import type { AiServiceStatus } from "./aiClient.js";
 import type { Catalogue } from "./catalogue/catalogue.js";
 import { catalogueRouter } from "./catalogue/routes.js";
+import type { City } from "./cities.js";
 import { SERVICE_NAME, SERVICE_VERSION } from "./config.js";
 import type { Logger } from "./logger.js";
+import { quoteRouter } from "./quote/routes.js";
+import type { QuoteStore } from "./quote/store.js";
 
 export interface AppDeps {
   logger: Logger;
@@ -11,9 +14,13 @@ export interface AppDeps {
   checkAiService: () => Promise<AiServiceStatus>;
   /** Product catalogue, loaded once at startup from data/raw/product_catalogue.csv. */
   catalogue: Catalogue;
+  /** Cities served, with tier (from smb_leads.csv). */
+  cities: City[];
+  /** Accepted quotes (in memory). */
+  quoteStore: QuoteStore;
 }
 
-export function createApp({ logger, checkAiService, catalogue }: AppDeps): Express {
+export function createApp({ logger, checkAiService, catalogue, cities, quoteStore }: AppDeps): Express {
   const app = express();
   app.disable("x-powered-by");
   app.use(express.json({ limit: "1mb" }));
@@ -52,6 +59,7 @@ export function createApp({ logger, checkAiService, catalogue }: AppDeps): Expre
   });
 
   app.use("/api", catalogueRouter(catalogue));
+  app.use("/api", quoteRouter(catalogue, cities, quoteStore));
 
   app.use((_req, res) => {
     res.status(404).json({ error: "not_found" });

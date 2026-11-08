@@ -1,18 +1,28 @@
 import { checkAiService } from "./aiClient.js";
 import { createApp } from "./app.js";
 import { type Catalogue, DEFAULT_CATALOGUE_PATH, loadCatalogue } from "./catalogue/catalogue.js";
+import { type City, DEFAULT_LEADS_PATH, loadCities } from "./cities.js";
+import { TODAY } from "./clock.js";
 import { loadConfig, loadRootEnv, SERVICE_NAME, SERVICE_VERSION } from "./config.js";
 import { createLogger } from "./logger.js";
+import { QuoteStore } from "./quote/store.js";
 
 const envLoaded = loadRootEnv();
 const config = loadConfig();
 const logger = createLogger({ service: SERVICE_NAME, level: config.logLevel });
 
 let catalogue: Catalogue;
+let cities: City[];
 try {
   catalogue = loadCatalogue();
 } catch (err) {
   logger.error("could not load the product catalogue", { path: DEFAULT_CATALOGUE_PATH, error: err });
+  process.exit(1);
+}
+try {
+  cities = loadCities();
+} catch (err) {
+  logger.error("could not load the city list", { path: DEFAULT_LEADS_PATH, error: err });
   process.exit(1);
 }
 
@@ -20,6 +30,8 @@ const app = createApp({
   logger,
   checkAiService: () => checkAiService(config.aiServiceUrl, config.aiServiceTimeoutMs),
   catalogue,
+  cities,
+  quoteStore: new QuoteStore(() => TODAY),
 });
 
 const server = app.listen(config.port, () => {
