@@ -1,4 +1,5 @@
 import { Router, type Response } from "express";
+import { parseAttribution } from "../backoffice/staff.js";
 import type { Catalogue } from "../catalogue/catalogue.js";
 import { parseBuildRequest, type Parsed } from "../catalogue/validate.js";
 import type { City } from "../cities.js";
@@ -8,7 +9,7 @@ import type { QuoteStore } from "./store.js";
 /**
  *   GET  /api/cities             cities served, with tier (from smb_leads.csv)
  *   POST /api/quote              { segment, variant?, profile, exclude?, include? } -> live quote
- *   POST /api/quotes             same body -> quote re-computed on the server and accepted
+ *   POST /api/quotes             same body (+ attributionCode?) -> quote re-computed on the server and accepted
  *   GET  /api/quotes/:quoteId    an accepted quote
  */
 export function quoteRouter(catalogue: Catalogue, cities: City[], store: QuoteStore): Router {
@@ -27,8 +28,10 @@ export function quoteRouter(catalogue: Catalogue, cities: City[], store: QuoteSt
   router.post("/quotes", (req, res) => {
     const parsed = parseQuoteRequest(req.body);
     if (!parsed.ok) return void res.status(400).json({ error: "invalid_request", details: parsed.errors });
+    const attribution = parseAttribution((req.body as Record<string, unknown>).attributionCode);
+    if (!attribution.ok) return void res.status(400).json({ error: "invalid_request", details: ["attributionCode is not a partner or sales code"] });
     // The total is always recomputed here; a price sent by the client is never trusted.
-    respondWithQuote(res, catalogue, parsed.value, (quote) => res.status(201).json(store.accept(parsed.value, quote)));
+    respondWithQuote(res, catalogue, parsed.value, (quote) => res.status(201).json(store.accept(parsed.value, quote, attribution.code)));
   });
 
   router.get("/quotes/:quoteId", (req, res) => {

@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { parseAttribution } from "../backoffice/staff.js";
 import { maskIdentifiers } from "../masking.js";
 import { AdvisorEngine, MAX_MESSAGE_CHARS, parseChoice, type AdvisorInput } from "./engine.js";
 import { LEAD_REASONS, leadView, MAX_NOTE, parseIndianMobile, type LeadReason, type LeadStore } from "./leads.js";
@@ -7,10 +8,10 @@ import { ADVISOR_LANGS, type Lang } from "./text.js";
 
 /**
  *   GET  /api/advisor/status                    is the AI helper on? (provider + model, never the key)
- *   POST /api/advisor/sessions                  { lang } -> new chat: greeting + first question
+ *   POST /api/advisor/sessions                  { lang, attributionCode? } -> new chat: greeting + first question
  *   POST /api/advisor/sessions/:id/messages     { lang, text } or { lang, choice } -> advisor reply
  *   POST /api/advisor/sessions/:id/lead         { reason, phone?, callbackConsent?, note? } -> lead for the back-office
- *   GET  /api/advisor/leads                     leads the advisor could not close (phone masked)
+ * The leads are listed only in the back-office, behind the staff sign-in (GET /api/backoffice/leads).
  */
 export function advisorRouter(engine: AdvisorEngine, sessions: AdvisorSessionStore, leads: LeadStore, llmStatus: () => Promise<unknown>): Router {
   const router = Router();
@@ -25,7 +26,9 @@ export function advisorRouter(engine: AdvisorEngine, sessions: AdvisorSessionSto
     const b = body(req.body) ?? {};
     const lang = b.lang ?? "en";
     if (!isLang(lang)) return void res.status(400).json({ error: "invalid_request", details: ["lang must be en or hi"] });
-    const session = sessions.create(lang);
+    const attribution = parseAttribution(b.attributionCode);
+    if (!attribution.ok) return void res.status(400).json({ error: "invalid_request", details: ["attributionCode is not a partner or sales code"] });
+    const session = sessions.create(lang, attribution.code);
     res.status(201).json(await engine.start(session));
   });
 
@@ -91,10 +94,6 @@ export function advisorRouter(engine: AdvisorEngine, sessions: AdvisorSessionSto
     const { lead, created } = leads.save(session, { reason: reason as LeadReason, note, phone, callbackConsent: consent });
     const view = leadView(lead);
     res.status(created ? 201 : 200).json({ leadId: view.leadId, reason: view.reason, phoneMasked: view.phoneMasked });
-  });
-
-  router.get("/advisor/leads", (_req, res) => {
-    res.json({ leads: leads.list().map(leadView) });
   });
 
   return router;

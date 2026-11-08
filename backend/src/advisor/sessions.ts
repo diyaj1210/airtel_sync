@@ -29,6 +29,8 @@ export interface AdvisorSession {
   askedUnavailable: ProductId[];
   turns: number;
   leadId: string | null;
+  /** Partner / sales code the owner was referred by (back-office attribution), or null. */
+  attributionCode: string | null;
   busy: boolean;
   lastSeenMs: number;
 }
@@ -46,7 +48,7 @@ export class AdvisorSessionStore {
     private readonly newId: () => string = () => `S-${randomBytes(8).toString("hex")}`,
   ) {}
 
-  create(lang: Lang): AdvisorSession {
+  create(lang: Lang, attributionCode: string | null = null): AdvisorSession {
     this.sweep();
     if (this.sessions.size >= this.options.maxSessions) {
       // Drop the least recently used chat (Map keeps insertion order; touch() re-inserts).
@@ -69,6 +71,7 @@ export class AdvisorSessionStore {
       askedUnavailable: [],
       turns: 0,
       leadId: null,
+      attributionCode,
       busy: false,
       lastSeenMs: this.now(),
     };

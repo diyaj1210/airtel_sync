@@ -172,6 +172,15 @@ class TestEndpoints:
         assert self.client.get("/propensity/leads/L99999").status_code == 404
         assert self.client.get("/propensity/leads/nope").status_code == 404
 
+    def test_scores_of_every_data_lead_without_lead_details(self) -> None:
+        body = self.client.get("/propensity/leads").json()
+        scores = body["scores"]
+        assert [s["id"] for s in scores] == IDS
+        assert set(scores[0]) == {"id", "probability", "score", "band", "reasons"}
+        one = self.client.get("/propensity/leads/L00001").json()
+        assert scores[0] == {k: one[k] for k in scores[0]}
+        assert sum(s["band"] == "high" for s in scores) / len(scores) == pytest.approx(0.2, abs=0.01)
+
     def test_errors(self) -> None:
         bad = self.client.post("/propensity/score", json={"leads": [{"lead": {}}, {"lead": {"segment": "x"}}]})
         assert bad.status_code == 422

@@ -46,7 +46,13 @@ its own rules. KYC decisions are made by fixed rules too (no AI).
 Behind the scenes (step 6) a **lead propensity model** scores how likely a lead is to activate
 (0-100, with the top 3 reasons): logistic regression trained on `smb_leads.csv` without any
 column that gives the outcome away; test AUC **0.670** (report: [docs/propensity-report.md](docs/propensity-report.md)).
-The back-office that shows it to sales comes in step 7.
+
+The **staff back-office** (step 7, http://localhost:5173/backoffice) shows sales and partners the
+leads the advisor could not close (reason, masked phone, propensity score and next action),
+the past quarter's dropped leads from `smb_leads.csv` ranked by score, the **KYC exceptions
+queue** where the operations desk approves or rejects manual-review cases, and **partner
+attribution**: a partner's link `/?ref=PTR-01` follows the customer from the chat or quote to
+KYC and the order, so the partner is credited even when the customer finishes alone.
 
 ## How to run (Windows PowerShell)
 
@@ -109,6 +115,22 @@ order** → choose UPI → **Pay … (MOCK)**. The tracker shows when each produ
 Office Pro: SIMs 16 July, fibre 20 July 2026) and the updates; the dashed **MOCK: move to the next
 stage** button plays the installation forward on its expected dates. Note the order reference and
 use Home → **Track my order** to open it again.
+
+**Try the back-office**: open http://localhost:5173/backoffice (or the **Staff back-office**
+link at the bottom of Home) and pick a **MOCK** demo account (no password):
+- **Operations desk** (`ADM-01`) sees everything. In **KYC exceptions**, a K07 or K10 case
+  that went to manual review can be approved (the owner can then sign and pay) or rejected
+  with a note the owner sees. Approval never unlocks products that need an Active GSTIN (K01).
+- **Field sales** (`SLS-01`, `SLS-02`) see **Advisor leads** (filter by score band, reason,
+  segment, city, partner, follow-up, owner; set the status and the owner) and **Past quarter**
+  (4,632 dropped leads, best score first, 25 a page, filters). No KYC data.
+- **Channel partners** (`PTR-01`, `PTR-02`) see only the leads they referred, their credit
+  (quotes, KYC, orders, monthly value) and their referral link. Open
+  http://localhost:5173/?ref=PTR-01 to start a referred journey: Home shows "Referred by
+  Shree Mobile Point".
+
+Scores need the ai-service; without it the lists still work and say the scores are unavailable.
+Leads, cases and orders live in memory, so restarting the backend empties them.
 
 Expected results (all 12 checked by tests, and live with the real OCR):
 
@@ -195,6 +217,11 @@ leakage column changes nothing, and that scoring from the JSON equals scikit-lea
 (rewrites the model and `docs/propensity-report.md`):
 `cd ai-service; .\.venv\Scripts\python -m app.propensity.train; cd ..`.
 
+Back-office: `backend/tests/backoffice/` (sign-in and roles, partner attribution end to end,
+scoring inputs, filters, the past-quarter list against the CSV, KYC approve / reject / lapse,
+Active-GSTIN rule after approval) and `frontend/src/backofficeFlow.test.tsx` (the screens
+against the real backend; only the Python model is replaced by a fake).
+
 ### Try the API (backend running)
 
 | Endpoint | What it does |
@@ -205,14 +232,13 @@ leakage column changes nothing, and that scoring from the JSON equals scikit-lea
 | `POST /api/bundles/build` | `{ segment, variant?, profile }` → eligible bundle, price, removed lines, add-ons |
 | `GET /api/cities` | The 22 cities in the data, with their tier |
 | `POST /api/quote` | `{ segment, variant?, profile, exclude?, include? }` → live quote; `422` with reasons if a change breaks a rule |
-| `POST /api/quotes` | Same body → quote recomputed on the server and accepted (`Q-XXXXXXXX`, valid 7 days from 2026-07-15) |
+| `POST /api/quotes` | Same body (+ `attributionCode?`, e.g. `PTR-01`) → quote recomputed on the server and accepted (`Q-XXXXXXXX`, valid 7 days from 2026-07-15) |
 | `GET /api/quotes/:id` | An accepted quote (kept in memory until the backend restarts) |
 | `GET /api/advisor/status` | Is the AI helper on? (`mode: gemini` with the model, or `mode: basic`; never the key) |
-| `POST /api/advisor/sessions` | `{ lang: "en" or "hi" }` → new chat: greeting and the first question |
+| `POST /api/advisor/sessions` | `{ lang: "en" or "hi", attributionCode? }` → new chat: greeting and the first question |
 | `POST /api/advisor/sessions/:id/messages` | `{ lang, text }` or `{ lang, choice }` → advisor reply (messages, quick replies, recommendation) |
 | `POST /api/advisor/sessions/:id/lead` | `{ reason, phone?, callbackConsent?, note? }` → lead the advisor could not close (`AL-XXXXXXXX`) |
-| `GET /api/advisor/leads` | Leads for the back-office, with the reason (phone masked) |
-| `POST /api/kyc/cases` | `{ consent: { accepted: true, version: "kyc-consent-v1" }, lang, quoteId? }` → new KYC case (`KYC-XXXXXXXX`); `400` without consent |
+| `POST /api/kyc/cases` | `{ consent: { accepted: true, version: "kyc-consent-v1" }, lang, quoteId?, attributionCode? }` → new KYC case (`KYC-XXXXXXXX`); `400` without consent |
 | `GET /api/kyc/cases/:id` | The case: masked business details, registry details, documents read, result |
 | `PUT /api/kyc/cases/:id/business` | `{ applicantName, gstin or null, hasUdyam, udyamNumber? }` (GSTIN format + checksum checked) or `{ sampleId: "K01" }` (DEMO) → lookups |
 | `PUT /api/kyc/cases/:id/documents/:docType` | Body = the image (`image/png`, `image/jpeg`, `image/webp`, ≤ 8 MB); `docType` = `gst_certificate`, `udyam_certificate`, `signatory_id` or `address_proof` → OCR + checks |
@@ -229,6 +255,13 @@ leakage column changes nothing, and that scoring from the JSON equals scikit-lea
 | `POST /api/orders` | `{ caseId, method: "upi" or "card" or "netbanking", simulateFailure? }` → **MOCK** payment → order (`ORD-XXXXXXXX`); `402` for a simulated failure, `409` with the reason if it cannot be paid |
 | `GET /api/orders/:orderId` | Order status: stages with done / expected dates, each product's expected date, updates (no personal data) |
 | `POST /api/orders/:orderId/advance` | **MOCK**: the next stage happens on its expected date (demo) |
+| `GET /api/partners/:code` | Name of a partner / sales referral code (`PTR-01`, `SLS-01`, ...) |
+| `GET /api/backoffice/accounts` · `POST /api/backoffice/session` | **MOCK** staff sign-in: demo accounts → `{ staffCode }` → token (send as `Authorization: Bearer ...`, 8 hours) |
+| `GET /api/backoffice/leads` | Leads the advisor could not close + reason, masked phone, attribution, score + next action; filters `reason`, `segment`, `city`, `attribution`, `band`, `status`, `assignedTo` (partners: their own only) |
+| `PATCH /api/backoffice/leads/:leadId` | `{ status?: new / contacted / converted / lost, assignedTo? }` follow-up |
+| `GET /api/backoffice/crm-leads` | Past-quarter dropped leads (`smb_leads.csv`) by score, 25 a page; filters `segment`, `city`, `source`, `reason`, `stage`, `band`, `page` (admin, sales) |
+| `GET /api/backoffice/kyc` · `POST /api/backoffice/kyc/:caseId/review` | KYC exceptions queue; `{ decision: approved / rejected, note? }` (operations desk only) |
+| `GET /api/backoffice/attribution` | Leads, quotes, KYC cases, orders and monthly value per partner / sales code |
 
 A `profile` is `{ "cityTier": 1 or 2, "employees": n, "sites": n, "gstin": "active" | "inactive" | "none" }`.
 

@@ -10,6 +10,8 @@ export interface AcceptedQuote {
   validUntil: string;
   request: QuoteRequest;
   quote: Quote;
+  /** Partner / sales code the customer was referred by (back-office attribution), or null. */
+  attributionCode: string | null;
 }
 
 /**
@@ -24,7 +26,7 @@ export class QuoteStore {
     private readonly newId: () => string = () => `Q-${randomBytes(4).toString("hex").toUpperCase()}`,
   ) {}
 
-  accept(request: QuoteRequest, quote: Quote): AcceptedQuote {
+  accept(request: QuoteRequest, quote: Quote, attributionCode: string | null = null): AcceptedQuote {
     let quoteId = this.newId();
     for (let tries = 0; this.quotes.has(quoteId); tries++) {
       if (tries > 10) throw new Error("Could not generate a unique quote id");
@@ -37,6 +39,7 @@ export class QuoteStore {
       validUntil: addDays(acceptedOn, QUOTE_VALID_DAYS),
       request,
       quote,
+      attributionCode,
     };
     this.quotes.set(quoteId, accepted);
     return accepted;
@@ -44,5 +47,9 @@ export class QuoteStore {
 
   get(quoteId: string): AcceptedQuote | undefined {
     return this.quotes.get(quoteId);
+  }
+
+  list(): AcceptedQuote[] {
+    return [...this.quotes.values()];
   }
 }

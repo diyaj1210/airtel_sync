@@ -42,8 +42,23 @@ export function createAiServicePropensity(baseUrl: string, timeoutMs: number, fe
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 const BANDS = ["high", "medium", "low"];
 
+export interface PropensityReason {
+  feature: string;
+  value: string;
+  effect: "up" | "down";
+  weight: number;
+}
+
+export interface PropensityScore {
+  id?: string | null;
+  probability: number;
+  score: number;
+  band: "high" | "medium" | "low";
+  reasons: PropensityReason[];
+}
+
 /** One score as the ai-service must send it; anything else is treated as the service being unavailable. */
-function validScore(s: unknown): boolean {
+export function validScore(s: unknown): s is PropensityScore {
   if (!isRecord(s)) return false;
   const { score, probability, band, reasons } = s;
   return (
@@ -104,4 +119,25 @@ export function propensityRouter(api: PropensityApi): Router {
   });
 
   return router;
+}
+
+/** Score leads (any number; sent 500 at a time). null when the model is unavailable or answers badly. */
+export async function scoreLeads(api: PropensityApi, leads: { id: string; lead: Record<string, string | number> }[]): Promise<PropensityScore[] | null> {
+  const out: PropensityScore[] = [];
+  for (let i = 0; i < leads.length; i += 500) {
+    const chunk = leads.slice(i, i + 500);
+    const r = await api.call("POST", "/propensity/score", { leads: chunk });
+    const scores = isRecord(r.body) ? r.body.scores : undefined;
+    if (r.status !== 200 || !Array.isArray(scores) || scores.length !== chunk.length || !scores.every(validScore)) return null;
+    out.push(...scores);
+  }
+  return out;
+}
+
+/** Scores of every lead in smb_leads.csv, by lead id. null when the model is unavailable or answers badly. */
+export async function dataLeadScores(api: PropensityApi): Promise<Map<string, PropensityScore> | null> {
+  const r = await api.call("GET", "/propensity/leads");
+  const scores = isRecord(r.body) ? r.body.scores : undefined;
+  if (r.status !== 200 || !Array.isArray(scores) || !scores.every((s) => validScore(s) && typeof s.id === "string")) return null;
+  return new Map((scores as PropensityScore[]).map((s) => [s.id as string, s]));
 }

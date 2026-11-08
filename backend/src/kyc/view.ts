@@ -1,6 +1,6 @@
 import type { Catalogue } from "../catalogue/catalogue.js";
 import type { AcceptedQuote } from "../quote/store.js";
-import type { KycEvaluation } from "./checks.js";
+import type { CaseEvaluation } from "./review.js";
 import { DOC_TYPES, type DocType, type DocumentReading } from "./documents.js";
 import type { Agreement } from "./esign.js";
 import { fixOcrGstin, fixOcrUdyam, maskGstin, maskNumber, maskUdyam } from "./identifiers.js";
@@ -33,14 +33,14 @@ function documentSummary(doc: DocumentReading): Record<string, string | null> {
 }
 
 /** Selected quote lines that need an Active GSTIN, when the business does not have one. */
-export function blockedProducts(evaluation: KycEvaluation, quote: AcceptedQuote | undefined, catalogue: Catalogue) {
+export function blockedProducts(evaluation: CaseEvaluation, quote: AcceptedQuote | undefined, catalogue: Catalogue) {
   if (!quote || evaluation.status === "not_started" || evaluation.gstinProductsAllowed) return [];
   return quote.quote.items
     .filter((item) => item.selected && catalogue.get(item.productId).requiresGstin)
     .map((item) => ({ productId: item.productId, name: item.name }));
 }
 
-export function caseView(kycCase: KycCase, evaluation: KycEvaluation, quote: AcceptedQuote | undefined, catalogue: Catalogue) {
+export function caseView(kycCase: KycCase, evaluation: CaseEvaluation, quote: AcceptedQuote | undefined, catalogue: Catalogue) {
   const { business } = kycCase;
   const { gst, udyam } = evaluation.registry;
   return {
@@ -86,13 +86,15 @@ export function caseView(kycCase: KycCase, evaluation: KycEvaluation, quote: Acc
       gstin: evaluation.gstin,
       gstinProductsAllowed: evaluation.gstinProductsAllowed,
       blockedProducts: blockedProducts(evaluation, quote, catalogue),
+      // A reviewer's decision on a manual-review case (back-office).
+      review: evaluation.review,
     },
     submitted: kycCase.submitted,
     esign: kycCase.esign && { started: true, signed: kycCase.esign.signed },
   };
 }
 
-export function agreementFor(kycCase: KycCase, evaluation: KycEvaluation, quote: AcceptedQuote | undefined, today: string): Agreement {
+export function agreementFor(kycCase: KycCase, evaluation: CaseEvaluation, quote: AcceptedQuote | undefined, today: string): Agreement {
   const gst = evaluation.registry.gst;
   const signatory = kycCase.documents.signatory_id ? v(kycCase.documents.signatory_id, "name") : null;
   return {

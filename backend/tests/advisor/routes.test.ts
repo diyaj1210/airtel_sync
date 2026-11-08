@@ -1,5 +1,6 @@
 import request from "supertest";
 import { describe, expect, it } from "vitest";
+import { leadView } from "../../src/advisor/leads.js";
 import { makeTestApp } from "../testApp.js";
 import { honestLlm } from "./helpers.js";
 
@@ -90,8 +91,8 @@ describe("advisor API", () => {
 });
 
 describe("leads the advisor could not close", () => {
-  it("saves a call-back request with a masked phone, and lists it for the back-office", async () => {
-    const { app, logLines } = makeTestApp();
+  it("saves a call-back request with a masked phone, for the back-office", async () => {
+    const { app, logLines, leadStore } = makeTestApp();
     const id = await newChat(app);
     await say(app, id, { lang: "en", text: "I run a bakery in Pune" });
     await say(app, id, { lang: "en", text: "talk to a person please" });
@@ -101,7 +102,9 @@ describe("leads the advisor could not close", () => {
     expect(res.status).toBe(201);
     expect(res.body).toEqual({ leadId: expect.stringMatching(/^AL-[0-9A-F]{8}$/), reason: "asked_for_human", phoneMasked: "******3210" });
 
-    const list = await request(app).get("/api/advisor/leads");
+    // Listed only in the back-office, behind the staff sign-in (tests/backoffice).
+    expect((await request(app).get("/api/advisor/leads")).status).toBe(404);
+    const list = { body: { leads: leadStore.list().map(leadView) } };
     expect(list.body.leads).toEqual([
       expect.objectContaining({
         leadId: res.body.leadId,
@@ -119,21 +122,21 @@ describe("leads the advisor could not close", () => {
   });
 
   it("saves a 'not for me' reason without any contact details", async () => {
-    const { app } = makeTestApp();
+    const { app, leadStore } = makeTestApp();
     const id = await newChat(app);
     const res = await request(app).post(`/api/advisor/sessions/${id}/lead`).send({ reason: "price_too_high" });
     expect(res.status).toBe(201);
-    expect((await request(app).get("/api/advisor/leads")).body.leads[0]).toMatchObject({ reason: "price_too_high", phoneMasked: null });
+    expect(leadView(leadStore.list()[0]!)).toMatchObject({ reason: "price_too_high", phoneMasked: null });
   });
 
   it("updates the chat's lead instead of creating a second one", async () => {
-    const { app } = makeTestApp();
+    const { app, leadStore } = makeTestApp();
     const id = await newChat(app);
     const first = await request(app).post(`/api/advisor/sessions/${id}/lead`).send({ reason: "decided_to_wait" });
     const second = await request(app).post(`/api/advisor/sessions/${id}/lead`).send({ reason: "other", note: "need a landline" });
     expect(second.status).toBe(200);
     expect(second.body.leadId).toBe(first.body.leadId);
-    expect((await request(app).get("/api/advisor/leads")).body.leads).toHaveLength(1);
+    expect(leadStore.list()).toHaveLength(1);
   });
 
   it.each([

@@ -1,18 +1,20 @@
 import express, { Router, type ErrorRequestHandler, type Request, type Response } from "express";
+import { parseAttribution } from "../backoffice/staff.js";
 import type { Catalogue } from "../catalogue/catalogue.js";
 import type { Logger } from "../logger.js";
 import type { QuoteStore } from "../quote/store.js";
-import { evaluateKyc, type BusinessDetails } from "./checks.js";
+import type { BusinessDetails } from "./checks.js";
 import { DocumentReadError, IMAGE_TYPES, isDocType, MAX_IMAGE_BYTES, type DocumentReader } from "./documents.js";
 import { startEsign, verifyEsign } from "./esign.js";
 import { checkGstin, checkUdyam, maskGstin, maskUdyam } from "./identifiers.js";
 import type { Registries } from "./registry.js";
+import { evaluateCase } from "./review.js";
 import { sampleImagePath, SAMPLE_ID_RE, type SampleApplicant } from "./samples.js";
 import { CONSENT_VERSION, type KycCase, type KycCaseStore } from "./store.js";
 import { agreementFor, caseView } from "./view.js";
 
 /**
- *   POST   /api/kyc/cases                          consent given -> new case          { consent: {accepted, version}, lang, quoteId? }
+ *   POST   /api/kyc/cases                          consent given -> new case          { consent: {accepted, version}, lang, quoteId?, attributionCode? }
  *   GET    /api/kyc/cases/:id                      case + current result
  *   PUT    /api/kyc/cases/:id/business             applicant, GSTIN, Udyam -> lookups { applicantName, gstin|null, hasUdyam, udyamNumber? } | { sampleId }
  *   PUT    /api/kyc/cases/:id/documents/:docType   upload one image (raw body, image/png|jpeg|webp, <= 8 MB) -> OCR -> checks
@@ -79,7 +81,7 @@ export function kycRouter(deps: KycDeps): Router {
   const { catalogue, quoteStore, registries, store, reader, samples, today, nowMs, logger } = deps;
   const router = Router();
   const quoteOf = (c: KycCase) => (c.quoteId ? quoteStore.get(c.quoteId) : undefined);
-  const evaluate = (c: KycCase) => evaluateKyc({ business: c.business, documents: c.documents, submitted: c.submitted }, registries, today());
+  const evaluate = (c: KycCase) => evaluateCase(c, registries, today());
   const send = (res: Response, c: KycCase, status = 200) =>
     res.status(status).json({ ...caseView(c, evaluate(c), quoteOf(c), catalogue), orderId: deps.orderFor?.(c.caseId) ?? null });
 
@@ -109,7 +111,10 @@ export function kycRouter(deps: KycDeps): Router {
       if (typeof body.quoteId !== "string" || !quoteStore.get(body.quoteId)) return void res.status(400).json({ error: "quote_not_found" });
       quoteId = body.quoteId;
     }
-    const c = store.create(lang, quoteId);
+    const attribution = parseAttribution(body.attributionCode);
+    if (!attribution.ok) return void res.status(400).json({ error: "invalid_request" });
+    // A partner who referred the quote keeps the credit when the owner does KYC on their own.
+    const c = store.create(lang, quoteId, attribution.code ?? (quoteId ? (quoteStore.get(quoteId)?.attributionCode ?? null) : null));
     logger.info("kyc consent given", { caseId: c.caseId, version: CONSENT_VERSION });
     send(res, c, 201);
   });

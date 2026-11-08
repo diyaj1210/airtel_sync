@@ -2,6 +2,8 @@
 
 GET  /propensity/model   model card: inputs, excluded leakage columns, test AUC and other metrics, bands
 GET  /propensity/leads/{leadId}   score of a lead in data/raw/smb_leads.csv (its arrival details only)
+GET  /propensity/leads           scores of every lead in smb_leads.csv (id, score, band, reasons; no lead details),
+                                  for the back-office call list
 POST /propensity/score   {"leads": [{"id"?: str, "lead": {feature: value, ...}}, ...]} (1-500 leads)
   -> 200 {"scores": [{"id", "probability", "score", "band", "reasons": [{"feature", "value", "effect", "weight"}]}]}
      422 {"error": "invalid_lead", "index": i, "problems": [{"field", "problem"}]}
@@ -45,6 +47,15 @@ def data_leads() -> dict[str, dict[str, Any]]:
     """Arrival details of every lead in smb_leads.csv, by lead id (read once)."""
     ids, rows, _ = load_leads()
     return dict(zip(ids, rows))
+
+
+def all_scores(model: PropensityModel) -> list[dict[str, Any]]:
+    """Every data lead scored once per model (the leads and the model do not change while running)."""
+    cached = getattr(model, "_all_scores", None)
+    if cached is None:
+        cached = [score_json(lead_id, model.score(lead)) for lead_id, lead in data_leads().items()]
+        model._all_scores = cached  # type: ignore[attr-defined]
+    return cached
 
 
 def score_json(lead_id: str | None, s: Score) -> dict[str, Any]:
@@ -99,6 +110,13 @@ def propensity_router() -> APIRouter:
             out.append(score_json(item.id, s))
         log.info("leads scored", extra={"fields": {"count": len(out)}})
         return {"scores": out}
+
+    @router.get("/leads", response_model=None)
+    def all_data_leads(request: Request) -> dict[str, Any] | JSONResponse:
+        model = _model(request)
+        if model is None:
+            return JSONResponse(status_code=503, content={"error": "model_unavailable"})
+        return {"scores": all_scores(model)}
 
     @router.get("/leads/{lead_id}", response_model=None)
     def data_lead(lead_id: str, request: Request) -> dict[str, Any] | JSONResponse:

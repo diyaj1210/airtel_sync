@@ -8,6 +8,10 @@ import type { AiServiceStatus } from "./aiClient.js";
 import type { Catalogue } from "./catalogue/catalogue.js";
 import { catalogueRouter } from "./catalogue/routes.js";
 import type { City } from "./cities.js";
+import { StaffSessions } from "./backoffice/auth.js";
+import { loadBusinessTypes, loadCrmLeads, type CrmLead } from "./backoffice/crm.js";
+import { backofficeRouter } from "./backoffice/routes.js";
+import { BackofficeScoring } from "./backoffice/scoring.js";
 import { TODAY } from "./clock.js";
 import { SERVICE_NAME, SERVICE_VERSION } from "./config.js";
 import { NO_READER, type DocumentReader } from "./kyc/documents.js";
@@ -54,7 +58,15 @@ export interface AppDeps {
   orderStore?: OrderStore;
   /** Lead propensity model (in the ai-service). Default: none, the endpoints answer 503. */
   propensity?: PropensityApi;
+  /** MOCK staff sign-ins for the back-office (in memory). */
+  staffSessions?: StaffSessions;
+  /** Past-quarter dropped leads and the business types in smb_leads.csv (default: read once from the file). */
+  crmLeads?: CrmLead[];
+  businessTypes?: ReadonlySet<string>;
 }
+
+let leadsData: { crmLeads: CrmLead[]; businessTypes: Set<string> } | undefined;
+const defaultLeadsData = () => (leadsData ??= { crmLeads: loadCrmLeads(), businessTypes: loadBusinessTypes() });
 
 export function createApp({
   logger,
@@ -73,6 +85,9 @@ export function createApp({
   kycStore = new KycCaseStore(() => TODAY),
   orderStore = new OrderStore(),
   propensity = NO_PROPENSITY,
+  staffSessions,
+  crmLeads,
+  businessTypes,
 }: AppDeps): Express {
   const gate = new LlmGate(advisorLlm, (kind) => logger.warn("advisor LLM unavailable, answering by rules", { kind }), nowMs);
   const advisor = new AdvisorEngine({ catalogue, cities, gate, logger });
@@ -140,6 +155,22 @@ export function createApp({
   );
   app.use("/api", propensityRouter(propensity));
   app.use("/api", ordersRouter({ catalogue, quoteStore, registries, kycStore, orderStore, today: () => TODAY, logger }));
+  app.use(
+    "/api",
+    backofficeRouter({
+      sessions: staffSessions ?? new StaffSessions(nowMs),
+      leadStore,
+      quoteStore,
+      kycStore,
+      orderStore,
+      catalogue,
+      registries,
+      crmLeads: crmLeads ?? defaultLeadsData().crmLeads,
+      scoring: new BackofficeScoring(propensity, businessTypes ?? defaultLeadsData().businessTypes),
+      today: () => TODAY,
+      logger,
+    }),
+  );
 
   app.use((_req, res) => {
     res.status(404).json({ error: "not_found" });

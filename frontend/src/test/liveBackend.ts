@@ -15,6 +15,7 @@ import { loadRegistries } from "../../../backend/src/kyc/registry";
 import { loadSamples } from "../../../backend/src/kyc/samples";
 import { KycCaseStore } from "../../../backend/src/kyc/store";
 import { createLogger } from "../../../backend/src/logger";
+import type { PropensityApi } from "../../../backend/src/propensity/client";
 import { QuoteStore } from "../../../backend/src/quote/store";
 
 export interface LiveBackend {
@@ -35,7 +36,7 @@ export const catalogue = loadCatalogue();
 const registries = loadRegistries();
 const kycSamples = loadSamples();
 
-export async function startBackend(options: { advisorLlm?: AdvisorLlm; documentReader?: DocumentReader } = {}): Promise<LiveBackend> {
+export async function startBackend(options: { advisorLlm?: AdvisorLlm; documentReader?: DocumentReader; propensity?: PropensityApi } = {}): Promise<LiveBackend> {
   const leadStore = new LeadStore(() => TODAY);
   const kycStore = new KycCaseStore(() => TODAY);
   const app = createApp({
@@ -50,6 +51,7 @@ export async function startBackend(options: { advisorLlm?: AdvisorLlm; documentR
     kycSamples,
     kycStore,
     documentReader: options.documentReader,
+    propensity: options.propensity,
   });
   const server: Server = await new Promise((resolve) => {
     const s = app.listen(0, "127.0.0.1", () => resolve(s));

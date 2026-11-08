@@ -1,5 +1,6 @@
 /** Types and calls for the Smart KYC API (backend/src/kyc). Identifiers arrive masked. */
 import type { Lang } from "../i18n/I18nProvider";
+import { withReferral } from "../referral";
 
 export const DOC_TYPES = ["gst_certificate", "udyam_certificate", "signatory_id", "address_proof"] as const;
 export type DocType = (typeof DOC_TYPES)[number];
@@ -9,7 +10,8 @@ export const CONSENT_VERSION = "kyc-consent-v1";
 export const ACCEPTED_IMAGES = "image/png,image/jpeg,image/webp";
 export const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 
-export type KycStatus = "not_started" | "in_progress" | "pass" | "fix_needed" | "manual_review";
+/** "rejected": a reviewer did not approve a manual-review case (back-office). */
+export type KycStatus = "not_started" | "in_progress" | "pass" | "fix_needed" | "manual_review" | "rejected";
 export type Severity = "fix" | "review" | "warning";
 
 export interface KycIssue {
@@ -45,6 +47,8 @@ export interface KycCase {
     gstin: "active" | "cancelled" | "suspended" | "not_found" | "none";
     gstinProductsAllowed: boolean;
     blockedProducts: { productId: string; name: string }[];
+    /** A reviewer's decision on a manual-review case, or null. */
+    review: { decision: "approved" | "rejected"; on: string; note: string | null } | null;
   };
   submitted: boolean;
   esign: { started: boolean; signed: { reference: string; signedOn: string; documentHash: string } | null } | null;
@@ -122,7 +126,7 @@ async function send<T>(fetchFn: FetchFn, method: string, url: string, body?: unk
 const caseUrl = (id: string) => `/api/kyc/cases/${encodeURIComponent(id)}`;
 
 export const startKyc = (lang: Lang, quoteId: string | null, fetchFn: FetchFn = fetch) =>
-  send<KycCase>(fetchFn, "POST", "/api/kyc/cases", { consent: { accepted: true, version: CONSENT_VERSION }, lang, ...(quoteId ? { quoteId } : {}) });
+  send<KycCase>(fetchFn, "POST", "/api/kyc/cases", withReferral({ consent: { accepted: true, version: CONSENT_VERSION }, lang, ...(quoteId ? { quoteId } : {}) }));
 
 export const saveBusiness = (caseId: string, body: BusinessInput | { sampleId: string }, fetchFn: FetchFn = fetch) =>
   send<KycCase>(fetchFn, "PUT", `${caseUrl(caseId)}/business`, body);
