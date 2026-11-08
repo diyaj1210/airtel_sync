@@ -15,6 +15,8 @@ export interface Config {
   aiServiceTimeoutMs: number;
   /** Advisor calls to the ai-service (Gemini answers in 1-3 s; after this the advisor uses its rules). */
   advisorTimeoutMs: number;
+  /** Reading one KYC document (OCR: 1-5 s; the first one also loads the models). */
+  kycOcrTimeoutMs: number;
 }
 
 /** Repo root: backend/src (dev, via tsx) and backend/dist (built) are both two levels down. */
@@ -69,5 +71,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     logLevel: parseLogLevel(env.LOG_LEVEL),
     aiServiceTimeoutMs: 2000,
     advisorTimeoutMs: 15000,
+    kycOcrTimeoutMs: 60000,
   };
 }

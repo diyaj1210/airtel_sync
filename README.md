@@ -15,8 +15,8 @@ Requirements: [docs/requirements-checklist.md](docs/requirements-checklist.md).
 | `data/raw/` | Synthetic hackathon data (read-only, never modified) | – |
 | `scripts/verify_outline.py` | Checks the outline's bundles and numbers against `data/raw/` | – |
 
-Current state (after step 3): the owner can **chat with an advisor or fill a short form, then
-get a quote on their phone**.
+Current state (after step 4): the owner can **chat with an advisor or fill a short form, get a
+quote, and complete KYC on their phone**.
 - **Advisor chat** (Home → "Chat with our advisor"): type freely in English, Hindi or Hinglish
   ("मेरी जयपुर में किराना दुकान है, 3 लोग") or tap the quick replies. It asks the business type,
   size, locations, city, GSTIN and current tools, recommends a bundle with one monthly price and
@@ -25,11 +25,18 @@ get a quote on their phone**.
 - **Quote** (from the chat, or Home → "Get my price" → short form): one monthly price, setup fee,
   contract and ready time, add-on switches that re-price live, greyed-out items with the reason →
   accept → quote reference valid for 7 days.
+- **Smart KYC** (accepted quote → "Continue to KYC", or Home → "Complete your KYC"): consent
+  screen first (what, why, how long, how to withdraw) → name + GSTIN + Udyam → details filled from
+  the **MOCK** GSTIN/Udyam registries → upload only what is still needed → documents read by OCR
+  (RapidOCR, offline) → every check in `solution_outline_chat/kyc-validation.md` → **Pass / Fix
+  needed / Manual review** with the reasons in plain English or Hindi → **MOCK e-sign** with a
+  one-time password shown on screen. "Withdraw consent" deletes everything at any time.
 
 Every product and price comes from the backend **catalogue rules engine**. The AI helper
 (Gemini, optional) only reads the owner's messages and rewords the engine's facts; every sentence
 it writes is checked before it is shown, and without a key the advisor runs in **basic mode** on
-its own rules. KYC and the tracker arrive in steps 4–8.
+its own rules. KYC decisions are made by fixed rules too (no AI). Payment and the tracker arrive in
+step 5.
 
 ## How to run (Windows PowerShell)
 
@@ -47,6 +54,10 @@ cd backend; npm install; cd ..
 cd frontend; npm install; cd ..
 cd ai-service; python -m venv .venv; .\.venv\Scripts\python -m pip install -r requirements-dev.txt; cd ..
 ```
+
+The ai-service install includes the document OCR (RapidOCR with its models, about 60 MB in
+total). Nothing else needs installing: no Tesseract, no internet needed once installed. **Already
+set up before step 4?** Run the `pip install` line again to add the OCR packages.
 
 ### 2. Start the app (three terminals, each from the repo root)
 
@@ -72,6 +83,29 @@ email): the advisor recommends **Office Pro at ₹4,215/month** and "See my quot
 quote. The badge at the top of the chat says **AI helper on** (Gemini) or **Basic mode (no AI)**;
 sentences written by Gemini carry a small "AI" label. **Get my price** opens the short form instead. To see the phone layout on a laptop, press F12 and turn on the device
 toolbar (Ctrl+Shift+M). Stop any service with Ctrl+C.
+
+**Try the KYC**: Home → **Complete your KYC** → tick the consent box → in the dashed **DEMO** box
+choose a sample applicant (K01–K12 from `data/raw/kyc_documents`) → **Use this sample**. The app
+fills in that applicant's details and uploads their document images one by one through the same
+upload + OCR path a phone photo takes (about 2 s per page; the first page also loads the OCR
+models). For example **K03** passes (then **Sign the agreement** → MOCK one-time password),
+**K11** is asked for a recent bill (257 days old) and **K07** goes to manual review (the legal
+name on the GST certificate differs from the registry). To upload your own photo, enter the
+details yourself and use **Upload photo** on each document.
+
+Expected results (all 12 checked by tests, and live with the real OCR):
+
+| Applicant | Result | Why |
+|---|---|---|
+| K01 | Manual review | GSTIN **Cancelled** in the registry (GSTIN-only products blocked); blank Udyam certificate not used |
+| K02 | Pass | GST certificate is rotated: straightened before OCR |
+| K03, K08, K09, K12 | Pass | (only soft notes, e.g. the Udyam registration date) |
+| K04 | Fix needed | GST certificate blurred: re-upload |
+| K05 | Fix needed | Udyam certificate missing (or enter the Udyam number) |
+| K06 | Fix needed | GSTIN on the certificate fails the checksum and differs from the one entered |
+| K07 | Manual review | Legal name on the certificate differs from the registry (possible tampering) |
+| K10 | Manual review | Signatory is not the applicant, and an LLP has no person to match |
+| K11 | Fix needed | Electricity bill 257 days old (more than 90) |
 
 ### Gemini setup (optional AI helper for the advisor)
 
@@ -132,6 +166,12 @@ No test calls Gemini or uses your credits: the AI behaviour is tested with fake 
 one that tries to recommend ineligible products, invent prices and add links (all rejected). The
 21 advisor scenarios (R2.10) are in `backend/tests/advisor/scenarios.test.ts`.
 
+KYC: one test per applicant K01–K12 in `backend/tests/kyc/samples.test.ts`. They use what the
+OCR really reads from the sample images, saved in `ai-service/tests/fixtures/kyc_readings.json`;
+the ai-service tests (`tests/test_kyc.py`, about 80 s) run the real OCR on all 47 images and fail
+if that file no longer matches. After changing the OCR code, rewrite it with
+`cd ai-service; .\.venv\Scripts\python -m app.kyc.fixture; cd ..`.
+
 ### Try the API (backend running)
 
 | Endpoint | What it does |
@@ -149,6 +189,16 @@ one that tries to recommend ineligible products, invent prices and add links (al
 | `POST /api/advisor/sessions/:id/messages` | `{ lang, text }` or `{ lang, choice }` → advisor reply (messages, quick replies, recommendation) |
 | `POST /api/advisor/sessions/:id/lead` | `{ reason, phone?, callbackConsent?, note? }` → lead the advisor could not close (`AL-XXXXXXXX`) |
 | `GET /api/advisor/leads` | Leads for the back-office, with the reason (phone masked) |
+| `POST /api/kyc/cases` | `{ consent: { accepted: true, version: "kyc-consent-v1" }, lang, quoteId? }` → new KYC case (`KYC-XXXXXXXX`); `400` without consent |
+| `GET /api/kyc/cases/:id` | The case: masked business details, registry details, documents read, result |
+| `PUT /api/kyc/cases/:id/business` | `{ applicantName, gstin or null, hasUdyam, udyamNumber? }` (GSTIN format + checksum checked) or `{ sampleId: "K01" }` (DEMO) → lookups |
+| `PUT /api/kyc/cases/:id/documents/:docType` | Body = the image (`image/png`, `image/jpeg`, `image/webp`, ≤ 8 MB); `docType` = `gst_certificate`, `udyam_certificate`, `signatory_id` or `address_proof` → OCR + checks |
+| `DELETE /api/kyc/cases/:id/documents/:docType` | Remove an uploaded document |
+| `POST /api/kyc/cases/:id/submit` | "Check my documents" → `pass`, `fix_needed` or `manual_review` with the issues |
+| `POST /api/kyc/cases/:id/esign/start` · `/esign/verify` | **MOCK** e-sign: agreement + one-time password (shown, not sent) → `{ otp }` signs |
+| `DELETE /api/kyc/cases/:id` | Withdraw consent: the case and all its data are deleted |
+| `GET /api/lookup/gstin/:gstin` · `GET /api/lookup/udyam/:number` | **MOCK** registry lookups (`mock_gstin_registry.csv`, `mock_udyam_registry.csv`), numbers masked |
+| `GET /api/kyc/samples` · `/api/kyc/samples/:id/documents/:docType` | DEMO: the 12 sample applicants and their document images |
 
 A `profile` is `{ "cityTier": 1 or 2, "employees": n, "sites": n, "gstin": "active" | "inactive" | "none" }`.
 
@@ -157,6 +207,17 @@ $chat = Invoke-RestMethod http://localhost:4000/api/advisor/sessions -Method Pos
 $reply = Invoke-RestMethod "http://localhost:4000/api/advisor/sessions/$($chat.sessionId)/messages" -Method Post -ContentType "application/json" `
   -Body '{"lang":"en","text":"I run a dental clinic in Kochi with 5 people"}'
 $reply.messages | Select-Object source, text
+```
+
+```powershell
+# KYC: consent, a sample applicant's details, one real document through the OCR, then the result.
+$kyc = Invoke-RestMethod http://localhost:4000/api/kyc/cases -Method Post -ContentType "application/json" `
+  -Body '{"consent":{"accepted":true,"version":"kyc-consent-v1"},"lang":"en"}'
+$case = "http://localhost:4000/api/kyc/cases/$($kyc.caseId)"
+Invoke-RestMethod "$case/business" -Method Put -ContentType "application/json" -Body '{"sampleId":"K11"}' | Out-Null
+$r = Invoke-RestMethod "$case/documents/address_proof" -Method Put -ContentType "image/png" -InFile "data\raw\kyc_documents\K11_address_proof.png"
+$r.documents.address_proof.read | Format-List
+$r.result.issues | ForEach-Object { "$($_.code) ($($_.severity)): $($_.params | ConvertTo-Json -Compress)" }
 ```
 
 ```powershell
@@ -179,6 +240,12 @@ phone numbers and emails are masked (e.g. `27XUIX******1ZP`), and request bodies
 images are never logged. Gemini calls log only the model, task, outcome, time and token counts,
 never the prompt, the reply or the key.
 
+KYC documents: the image is read by OCR in memory and dropped at once (never written to disk,
+never logged); the log line has only the document type, whether it was readable and the time.
+The app and the API show GSTIN, Udyam, ID and consumer numbers only masked. Withdrawing consent
+deletes the case immediately; in this prototype all KYC data is in memory and also disappears
+when the backend restarts.
+
 ### Troubleshooting
 
 - **"port … is already in use"**: another copy is still running. Close it, or change the port in `.env`.
@@ -192,3 +259,7 @@ never the prompt, the reply or the key.
   Gemini is tried again.
 - **`Configuration error: GEMINI_MODEL …`**: the model name in `.env` has a typo; use
   `gemini-3.5-flash-lite`.
+- **KYC upload says "We cannot read documents right now"**: the ai-service is not running, or
+  its OCR packages are missing. Start Terminal 1; if it was set up before step 4, run
+  `cd ai-service; .\.venv\Scripts\python -m pip install -r requirements-dev.txt; cd ..` once.
+- **The first KYC document takes a few seconds longer**: the OCR models load on first use.

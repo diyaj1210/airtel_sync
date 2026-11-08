@@ -5,6 +5,9 @@ import { type Catalogue, DEFAULT_CATALOGUE_PATH, loadCatalogue } from "./catalog
 import { type City, DEFAULT_LEADS_PATH, loadCities } from "./cities.js";
 import { TODAY } from "./clock.js";
 import { loadConfig, loadRootEnv, SERVICE_NAME, SERVICE_VERSION } from "./config.js";
+import { createAiServiceReader } from "./kyc/documents.js";
+import { DEFAULT_GSTIN_REGISTRY_PATH, loadRegistries, type Registries } from "./kyc/registry.js";
+import { loadSamples, type SampleApplicant } from "./kyc/samples.js";
 import { createLogger } from "./logger.js";
 import { QuoteStore } from "./quote/store.js";
 
@@ -27,6 +30,16 @@ try {
   process.exit(1);
 }
 
+let registries: Registries;
+let kycSamples: SampleApplicant[];
+try {
+  registries = loadRegistries();
+  kycSamples = loadSamples();
+} catch (err) {
+  logger.error("could not load the mock GSTIN / Udyam registries or the sample applicants", { path: DEFAULT_GSTIN_REGISTRY_PATH, error: err });
+  process.exit(1);
+}
+
 const app = createApp({
   logger,
   checkAiService: () => checkAiService(config.aiServiceUrl, config.aiServiceTimeoutMs),
@@ -34,6 +47,9 @@ const app = createApp({
   cities,
   quoteStore: new QuoteStore(() => TODAY),
   advisorLlm: createAiServiceLlm(config.aiServiceUrl, config.advisorTimeoutMs),
+  registries,
+  kycSamples,
+  documentReader: createAiServiceReader(config.aiServiceUrl, config.kycOcrTimeoutMs),
 });
 
 const server = app.listen(config.port, () => {
@@ -42,6 +58,7 @@ const server = app.listen(config.port, () => {
     version: SERVICE_VERSION,
     aiServiceUrl: config.aiServiceUrl,
     products: catalogue.products.length,
+    registries: `${registries.gst.size} GSTINs, ${registries.udyam.size} Udyam numbers (mock)`,
     envFile: envLoaded ? ".env loaded" : "no .env (using defaults)",
   });
 });

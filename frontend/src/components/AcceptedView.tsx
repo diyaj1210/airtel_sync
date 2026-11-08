@@ -2,7 +2,7 @@ import type { AcceptedQuote } from "../api/quote";
 import { formatDate, formatInr } from "../format";
 import { useI18n } from "../i18n/I18nProvider";
 
-export function AcceptedView({ accepted, onNewQuote }: { accepted: AcceptedQuote; onNewQuote: () => void }) {
+export function AcceptedView({ accepted, onKyc, onNewQuote }: { accepted: AcceptedQuote; onKyc: () => void; onNewQuote: () => void }) {
   const { t, lang } = useI18n();
   const { totals } = accepted.quote;
   return (
@@ -29,6 +29,9 @@ export function AcceptedView({ accepted, onNewQuote }: { accepted: AcceptedQuote
         </div>
       </dl>
       <p>{t("accepted.next")}</p>
+      <button type="button" className="button-primary" onClick={onKyc}>
+        {t("accepted.kyc")}
+      </button>
       <button type="button" className="button-secondary" onClick={onNewQuote}>
         {t("accepted.newQuote")}
       </button>

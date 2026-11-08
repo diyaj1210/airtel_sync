@@ -10,6 +10,11 @@ import { catalogueRouter } from "./catalogue/routes.js";
 import type { City } from "./cities.js";
 import { TODAY } from "./clock.js";
 import { SERVICE_NAME, SERVICE_VERSION } from "./config.js";
+import { NO_READER, type DocumentReader } from "./kyc/documents.js";
+import type { Registries } from "./kyc/registry.js";
+import { kycRouter } from "./kyc/routes.js";
+import type { SampleApplicant } from "./kyc/samples.js";
+import { KycCaseStore } from "./kyc/store.js";
 import type { Logger } from "./logger.js";
 import { quoteRouter } from "./quote/routes.js";
 import type { QuoteStore } from "./quote/store.js";
@@ -30,8 +35,18 @@ export interface AppDeps {
   advisorSessions?: AdvisorSessionStore;
   /** Leads the advisor could not close (in memory). */
   leadStore?: LeadStore;
-  /** Clock for pausing the LLM after failures (tests inject one). */
+  /** Clock for pausing the LLM after failures and for e-sign OTP expiry (tests inject one). */
   nowMs?: () => number;
+  /** Mock GSTIN / Udyam registries (data/raw CSVs). */
+  registries: Registries;
+  /** DEMO sample applicants K01-K12. */
+  kycSamples: SampleApplicant[];
+  /** Folder of the sample document images (tests may point elsewhere). */
+  kycDocumentsDir?: string;
+  /** Reads document images (OCR in the ai-service). Default: none, every upload answers 503. */
+  documentReader?: DocumentReader;
+  /** KYC cases (in memory). */
+  kycStore?: KycCaseStore;
 }
 
 export function createApp({
@@ -44,6 +59,11 @@ export function createApp({
   advisorSessions = new AdvisorSessionStore(),
   leadStore = new LeadStore(() => TODAY),
   nowMs = () => Date.now(),
+  registries,
+  kycSamples,
+  kycDocumentsDir,
+  documentReader = NO_READER,
+  kycStore = new KycCaseStore(() => TODAY),
 }: AppDeps): Express {
   const gate = new LlmGate(advisorLlm, (kind) => logger.warn("advisor LLM unavailable, answering by rules", { kind }), nowMs);
   const advisor = new AdvisorEngine({ catalogue, cities, gate, logger });
@@ -93,6 +113,21 @@ export function createApp({
   app.use("/api", catalogueRouter(catalogue));
   app.use("/api", quoteRouter(catalogue, cities, quoteStore));
   app.use("/api", advisorRouter(advisor, advisorSessions, leadStore, llmStatus));
+  app.use(
+    "/api",
+    kycRouter({
+      catalogue,
+      quoteStore,
+      registries,
+      store: kycStore,
+      reader: documentReader,
+      samples: kycSamples,
+      documentsDir: kycDocumentsDir,
+      today: () => TODAY,
+      nowMs,
+      logger,
+    }),
+  );
 
   app.use((_req, res) => {
     res.status(404).json({ error: "not_found" });

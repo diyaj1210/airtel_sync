@@ -39,13 +39,13 @@ S6 propensity · S7 backoffice · S8 whatsapp-voice · S9 submission docs.
 - [ ] **R2.17** Checkout completes: payment (working mock, labelled) → order created — S5
 
 ### Smart KYC
-- [ ] **R2.18** **Clear consent screen** shown before any KYC data is collected — S4
-- [ ] **R2.19** **Document upload** — S4
-- [ ] **R2.20** **Extraction** (OCR) of fields from uploaded documents — S4
-- [ ] **R2.21** **Validation** of extracted fields (all checks in `solution_outline_chat/kyc-validation.md`) — S4
-- [ ] **R2.22** **Mocked GSTIN lookup** API — S4
-- [ ] **R2.23** **Mocked Udyam lookup** API — S4
-- [ ] **R2.24** e-sign / DigiLocker-style step (working mock, labelled; key question 3) — S4
+- [x] **R2.18** **Clear consent screen** shown before any KYC data is collected — S4 *(S4: what is collected, why, how, how long it is kept, how to withdraw; a tick box; no case exists until consent is given (API `400 consent_required`; consent version and date recorded); tested)*
+- [x] **R2.19** **Document upload** — S4 *(S4: photo upload per document (PNG/JPG/WebP up to 8 MB), re-upload / remove; only the documents still needed after the lookups are asked for)*
+- [x] **R2.20** **Extraction** (OCR) of fields from uploaded documents — S4 *(S4: RapidOCR (offline, pip-only) in the ai-service; pink watermark removed and tilted pages straightened before OCR; fields found by page layout; all 47 sample images read correctly, tested)*
+- [x] **R2.21** **Validation** of extracted fields (all checks in `solution_outline_chat/kyc-validation.md`) — S4 *(S4: checks 1-11 in `backend/src/kyc/checks.ts`; result Pass / Fix needed / Manual review with the reasons in English/Hindi; Udyam date/activity differences are soft warnings)*
+- [x] **R2.22** **Mocked GSTIN lookup** API — S4 *(S4: `GET /api/lookup/gstin/:gstin` and the lookup inside the KYC flow; labelled MOCK)*
+- [x] **R2.23** **Mocked Udyam lookup** API — S4 *(S4: `GET /api/lookup/udyam/:number` and the lookup inside the KYC flow; labelled MOCK)*
+- [x] **R2.24** e-sign / DigiLocker-style step (working mock, labelled; key question 3) — S4 *(S4: MOCK e-sign after a pass: agreement summary, one-time password shown on screen, wrong-code count, 10-minute expiry, SHA-256 of the signed agreement, case locked after signing)*
 
 ### Tracker
 - [ ] **R2.25** **Order status view** the owner can check instead of calling support — S5
@@ -61,7 +61,7 @@ S6 propensity · S7 backoffice · S8 whatsapp-voice · S9 submission docs.
 
 - [ ] **R4.1** Q1: Which MSME segments to prioritise first, and for each a bundle with **products, price point, contract length** — `bundles-and-pricing.md`, S1, S9 *(S1 done: 4 segment bundles + Starter Lite built and priced from the catalogue)*
 - [ ] **R4.2** Q2: Needs discovery without a salesperson: conversational advisor (chat **or** voice, **Hindi and regional languages**), a few questions, recommends a bundle with a clear monthly price — S3, S8, S9 *(S3 done: chat in Hindi + English, 7 questions, bundle with a clear monthly price; voice and regional languages: S8, rollout plan in S9)*
-- [ ] **R4.3** Q3: Near-instant KYC (GSTIN/Udyam lookup, OCR, DigiLocker, e-sign) compliant with the **DPDP Act 2023**: **consent**, **purpose limitation**, **data minimisation** — S4, S9
+- [ ] **R4.3** Q3: Near-instant KYC (GSTIN/Udyam lookup, OCR, DigiLocker, e-sign) compliant with the **DPDP Act 2023**: **consent**, **purpose limitation**, **data minimisation** — S4, S9 *(S4 done in the prototype: consent first, lookup before upload, OCR in about 2 s per page, MOCK e-sign, purpose stated, no Aadhaar number, images never stored; the business-case answer is S9)*
 - [ ] **R4.4** Q4: Role of the existing field force and channel partners so digital adds to them — `03-assisted-mode.md`, S7, S9
 - [ ] **R4.5** Q5: Define **3–5 metrics** that matter, with **targets** — `metrics-and-rollout.md`, S9
 
@@ -79,35 +79,35 @@ S6 propensity · S7 backoffice · S8 whatsapp-voice · S9 submission docs.
 - [x] **R6.2** Rule `available_city_tiers`: product sold only in these tiers — S1
 - [x] **R6.3** Rule `min_employees`: offered only at or above this size — S1
 - [x] **R6.4** Rule `min_sites`: offered only at or above this number of sites — S1
-- [ ] **R6.5** Rule `requires_gstin = Y`: cannot be sold without a **valid, active** GSTIN (Cancelled/Suspended blocks it) — S1, S4 *(S1 done: rule blocks none/cancelled/suspended; S4 will verify the status via the registry)*
+- [x] **R6.5** Rule `requires_gstin = Y`: cannot be sold without a **valid, active** GSTIN (Cancelled/Suspended blocks it) — S1, S4 *(S1: rule blocks none/cancelled/suspended; S4: KYC verifies the GSTIN and its registry status; a Cancelled/Suspended GSTIN goes to manual review and the quote's GSTIN-only products are listed as blocked (K01))*
 - [x] **R6.6** Rule `requires_one_of`: needs at least one of the listed products **in the same bundle** (also enforced when the owner removes a product) — S1, S2 *(S1 + S2: removal of a needed product is blocked with 'needed by …')*
 - [ ] **R6.7** `typical_install_days` used for the order tracker **and** expected activation dates — S5
 - [x] **R6.8** Price within catalogue range (`price_min`–`price_max`); setup fee and minimum contract from the catalogue — S1, S2 *(S1 + S2: list price = price_min, per-unit setup, contract = max; matches all 368 past bundles)*
-- [ ] **R6.9** "GSTIN lookup" API backed by `mock_gstin_registry.csv` (legal name, address, status incl. cancelled/suspended) — S4
-- [ ] **R6.10** "Udyam lookup" API backed by `mock_udyam_registry.csv` — S4
+- [x] **R6.9** "GSTIN lookup" API backed by `mock_gstin_registry.csv` (legal name, address, status incl. cancelled/suspended) — S4
+- [x] **R6.10** "Udyam lookup" API backed by `mock_udyam_registry.csv` — S4
 - [ ] **R6.11** `smb_leads.csv` used for insights (business case) and the propensity model — S6, S9
-- [ ] **R6.12** Smart KYC catches the planted problems in `kyc_documents/` (K01–K12); expected results listed in `kyc-validation.md`, one automated test per applicant — S4
-- [ ] **R6.13** Real GSTIN format check with valid checksum — S4
-- [ ] **R6.14** GSTIN validator **accepts `X` as the 4th PAN character** — S4
-- [ ] **R6.15** Udyam district code **`00` is accepted** (it is in every record) — S4
-- [ ] **R6.16** "Today" = **2026-07-15** for every date check — S4, S5
-- [ ] **R6.17** Address proof no older than **90 days** (bill date ≥ 2026-04-16) — S4
+- [x] **R6.12** Smart KYC catches the planted problems in `kyc_documents/` (K01–K12); expected results listed in `kyc-validation.md`, one automated test per applicant — S4 *(S4: `backend/tests/kyc/samples.test.ts`, one test each on the real OCR output; the same 12 through the API; a live run with the real OCR: all 12 as expected)*
+- [x] **R6.13** Real GSTIN format check with valid checksum — S4 *(S4: state code, PAN shape, holder type, entity digit, Z, mod-36 checksum; all 3,534 registry GSTINs pass; also checked in the app while typing)*
+- [x] **R6.14** GSTIN validator **accepts `X` as the 4th PAN character** — S4
+- [x] **R6.15** Udyam district code **`00` is accepted** (it is in every record) — S4
+- [ ] **R6.16** "Today" = **2026-07-15** for every date check — S4, S5 *(S4 done: bill age, ID validity, consent and e-sign dates use the injected 2026-07-15, also tested with another "today"; S5 tracker to come)*
+- [x] **R6.17** Address proof no older than **90 days** (bill date ≥ 2026-04-16) — S4 *(S4: 2026-04-16 passes, 2026-04-15 fails, a future date goes to review (tested); K11 caught)*
 - [ ] **R6.18** Never modify files in `data/raw/` — all steps
 
 ## 7. Privacy expectations (data/raw/README.md, PDF key question 3)
 
 - [ ] **R7.1** Treat the data as real customer data — all steps
-- [ ] **R7.2** Collect only what each step needs (data minimisation; lookup before upload) — S3, S4 *(S3 done: the advisor keeps only business facts (a typed GSTIN becomes 'has a GSTIN', the number is never stored); the LLM gets business facts + the message with identifiers masked; a phone is asked only for a call back, with consent, and shown masked; S4 KYC to come)*
-- [ ] **R7.3** Clear consent notice **before** KYC (what, why, how long, how to withdraw) — S4
-- [ ] **R7.4** Mask identifiers (GSTIN, Udyam, ID numbers) **in the UI** — S4, S5, S7
-- [ ] **R7.5** Mask identifiers **in logs**; never log raw documents — S0 (logger), S4 *(S0 done: masking JSON loggers in backend + ai-service, incl. uvicorn access logs; documents/bodies never logged; tested)*
-- [ ] **R7.6** Explain how long documents are retained (shown on consent screen + privacy note) — S4, S9
-- [ ] **R7.7** Purpose limitation: KYC data used only for onboarding/compliance — S4, S9
+- [x] **R7.2** Collect only what each step needs (data minimisation; lookup before upload) — S3, S4 *(S3 done: the advisor keeps only business facts (a typed GSTIN becomes 'has a GSTIN', the number is never stored); the LLM gets business facts + the message with identifiers masked; a phone is asked only for a call back, with consent, and shown masked. S4: GSTIN/Udyam looked up first, so certificates are asked for only when the lookup fails; no Aadhaar number; document images never stored, only the fields the checks need)*
+- [x] **R7.3** Clear consent notice **before** KYC (what, why, how long, how to withdraw) — S4
+- [ ] **R7.4** Mask identifiers (GSTIN, Udyam, ID numbers) **in the UI** — S4, S5, S7 *(S4 done: KYC API and screens show GSTIN, Udyam, ID and consumer numbers only masked (tested on API responses and rendered screens); S5/S7 screens to come)*
+- [x] **R7.5** Mask identifiers **in logs**; never log raw documents — S0 (logger), S4 *(S0 done: masking JSON loggers in backend + ai-service, incl. uvicorn access logs; documents/bodies never logged; tested. S4: OCR logs only document type, readable, label count and time; tested on both services, and the live run's 261 log lines had no identifier, name or address)*
+- [ ] **R7.6** Explain how long documents are retained (shown on consent screen + privacy note) — S4, S9 *(S4 done: the consent screen says images are deleted once read and the results are kept for the contract; privacy note S9)*
+- [ ] **R7.7** Purpose limitation: KYC data used only for onboarding/compliance — S4, S9 *(S4 done: purposes recorded with the consent (identity verification, regulatory compliance) and stated on the consent screen; no other part of the app uses KYC data; privacy note S9)*
 - [x] **R7.8** No secrets in the repo: `.env` ignored, `.env.example` provided — S0
 - [ ] **R7.9** The 1-page privacy note covers all of the above — S9
 
 ## 8. Team quality gates (from CLAUDE.md)
 
-- [ ] **R8.1** Automated tests: rules engine, pricing (S1, S2), advisor scenarios ≥15 (S3), KYC checks + GSTIN checksum + K01–K12 (S4), tracker dates (S5), propensity model (S6) *(S1–S3 done: advisor 21 scenarios × 3 LLM modes + parser, guard, engine, API and UI tests)*
-- [ ] **R8.2** Every mock (payments, e-sign, DigiLocker, WhatsApp API) works and is labelled as a mock — S4, S5, S8
+- [ ] **R8.1** Automated tests: rules engine, pricing (S1, S2), advisor scenarios ≥15 (S3), KYC checks + GSTIN checksum + K01–K12 (S4), tracker dates (S5), propensity model (S6) *(S1–S4 done: advisor 21 scenarios × 3 LLM modes; KYC: K01–K12 one test each, check edge cases, GSTIN/Udyam validators on every registry record, OCR on all 47 images, API and UI tests)*
+- [ ] **R8.2** Every mock (payments, e-sign, DigiLocker, WhatsApp API) works and is labelled as a mock — S4, S5, S8 *(S4 done: MOCK e-sign (DigiLocker / Aadhaar-OTP style) and MOCK registry lookups work and are labelled in the UI and the API; payments S5, WhatsApp S8)*
 - [ ] **R8.3** README "how to run" kept current after every step — S0–S9 *(S0: written)*

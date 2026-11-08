@@ -10,6 +10,10 @@ import { createApp } from "../../../backend/src/app";
 import { loadCatalogue } from "../../../backend/src/catalogue/catalogue";
 import { loadCities } from "../../../backend/src/cities";
 import { TODAY } from "../../../backend/src/clock";
+import type { DocumentReader } from "../../../backend/src/kyc/documents";
+import { loadRegistries } from "../../../backend/src/kyc/registry";
+import { loadSamples } from "../../../backend/src/kyc/samples";
+import { KycCaseStore } from "../../../backend/src/kyc/store";
 import { createLogger } from "../../../backend/src/logger";
 import { QuoteStore } from "../../../backend/src/quote/store";
 
@@ -22,13 +26,18 @@ export interface LiveBackend {
   failNext: (pathPrefix: string, times?: number) => void;
   /** Leads saved by the advisor (to check what the back-office receives). */
   leadStore: LeadStore;
+  /** KYC cases (to check what is kept, and that withdrawing deletes it). */
+  kycStore: KycCaseStore;
   close: () => Promise<void>;
 }
 
 export const catalogue = loadCatalogue();
+const registries = loadRegistries();
+const kycSamples = loadSamples();
 
-export async function startBackend(options: { advisorLlm?: AdvisorLlm } = {}): Promise<LiveBackend> {
+export async function startBackend(options: { advisorLlm?: AdvisorLlm; documentReader?: DocumentReader } = {}): Promise<LiveBackend> {
   const leadStore = new LeadStore(() => TODAY);
+  const kycStore = new KycCaseStore(() => TODAY);
   const app = createApp({
     logger: createLogger({ service: "backend", level: "silent" }),
     checkAiService: async () => ({ status: "ok", version: "0.1.0", latencyMs: 1 }),
@@ -37,6 +46,10 @@ export async function startBackend(options: { advisorLlm?: AdvisorLlm } = {}): P
     quoteStore: new QuoteStore(() => TODAY),
     leadStore,
     advisorLlm: options.advisorLlm,
+    registries,
+    kycSamples,
+    kycStore,
+    documentReader: options.documentReader,
   });
   const server: Server = await new Promise((resolve) => {
     const s = app.listen(0, "127.0.0.1", () => resolve(s));
@@ -62,6 +75,7 @@ export async function startBackend(options: { advisorLlm?: AdvisorLlm } = {}): P
     requests,
     failNext: (prefix, times = 1) => failures.push({ prefix, times }),
     leadStore,
+    kycStore,
     close: () =>
       new Promise<void>((resolve) => {
         server.closeAllConnections();
