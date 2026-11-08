@@ -710,6 +710,8 @@ p {
 
 .composer {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
   position: sticky;
   bottom: 0;
@@ -1705,4 +1707,32 @@ p {
   background: var(--color-ok-bg);
   color: var(--color-ok-text);
   font-weight: 600;
+}
+
+/* Voice: the status line always sits on its own row under the text box. */
+.voice-status {
+  order: 10;
+  flex-basis: 100%;
+  margin: 0;
+}
+
+.voice-status__dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--color-down-text);
+  animation: voice-pulse 1s ease-in-out infinite;
+}
+
+@keyframes voice-pulse {
+  50% {
+    opacity: 0.3;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .voice-status__dot {
+    animation: none;
+  }
 }

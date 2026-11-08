@@ -154,8 +154,10 @@ advisor questions (tap the buttons, type, or tap 🎤 and speak) → the bundle 
 asks for (📎, or the dashed **DEMO: send K03's photo** button) → the checks → the **MOCK**
 one-time password (type it) → **Pay with UPI (MOCK)** → the tracker (**MOCK: next stage**).
 Type **status** at any time, **help** for the commands, **stop** to delete your KYC details and
-the chat. 🔊 reads replies aloud. The 🎤 mic is also on the advisor chat. Voice needs a browser
-with speech recognition (Chrome or Edge; they use their own speech service for it) and
+the chat. 🔊 reads replies aloud. **Voice** (🎤, also on the advisor chat): tap it and speak; the
+words appear in the text box as you speak, nothing is sent until you press **Send**, so you can
+correct them first. Tap the mic again (■), **Stop**, or press Esc to stop at any time. Voice needs a
+browser with speech recognition (Chrome or Edge, online: they use their own speech service) and
 microphone permission; elsewhere the mic is hidden and typing works as usual.
 
 **Try the add-ons in the back-office**: as **Operations desk**, **KYC exceptions** shows each case's

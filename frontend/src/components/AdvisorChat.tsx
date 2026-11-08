@@ -6,7 +6,7 @@ import { useI18n, type Translate } from "../i18n/I18nProvider";
 import { unitLabel } from "../i18n/products";
 import { describeBlock } from "../i18n/reasons";
 import { LeadForm } from "./LeadForm";
-import { VoiceButton } from "./VoiceButton";
+import { useDictation, VoiceButton, VoiceStatus } from "./VoiceButton";
 
 const MAX_CHARS = 500;
 
@@ -30,6 +30,8 @@ export function AdvisorChat({ onSeeQuote, fetchFn }: { onSeeQuote: (request: Quo
   const [bubbles, setBubbles] = useState<Bubble[]>([]);
   const [reply, setReply] = useState<AdvisorReply | null>(null);
   const [text, setText] = useState("");
+  // Voice: the words go into the text box as the owner speaks; they correct them and press Send.
+  const dictation = useDictation(text, (v) => setText(v.slice(0, MAX_CHARS)));
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<"start" | "send" | null>(null);
   const [toolsDraft, setToolsDraft] = useState<string[]>([]);
@@ -295,11 +297,11 @@ export function AdvisorChat({ onSeeQuote, fetchFn }: { onSeeQuote: (request: Quo
             onChange={(e) => setText(e.target.value)}
             disabled={!sessionId}
           />
-          {/* Voice (step 8): the recognised words are sent like a typed message. */}
-          <VoiceButton disabled={!sessionId || sending} onText={(said) => send({ lang, text: said.slice(0, MAX_CHARS) }, `🎤 ${said.slice(0, MAX_CHARS)}`)} />
-          <button type="submit" className="button-primary composer__send" disabled={!sessionId || sending || text.trim() === ""}>
+          <VoiceButton dictation={dictation} disabled={!sessionId || sending} />
+          <button type="submit" className="button-primary composer__send" disabled={!sessionId || sending || text.trim() === "" || dictation.listening}>
             {t("advisor.send")}
           </button>
+          <VoiceStatus dictation={dictation} />
         </form>
       )}
     </section>

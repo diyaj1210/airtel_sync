@@ -27,6 +27,17 @@ Status values: **not started** · **in progress** · **done** (done = merged to 
 
 ## Log
 
+- **2026-11-08**: Voice fixed after the user's manual test (the mic stayed on "Listening..." and
+  nothing appeared). Cause: in React strict mode (how the app runs in the browser) the mic
+  button's "still on screen" flag was switched off by the first unmount and never switched back,
+  so every result was ignored; the tests did not render in strict mode. Now: words appear in the
+  text box live as the owner speaks (interim results), nothing is sent until Send so the owner can
+  correct them, the mic button / Stop link / Esc stop it at any time, a 15 s safety timeout, clear
+  errors (no microphone, speech service unreachable, blocked), the status line sits under the box.
+  Tests now render in strict mode (and were checked to fail with the old bug). A Back button was
+  added on the KYC and checkout screens. Frontend tests 107; the whole-journey tests got a 20 s
+  time limit (they passed alone but hit 5 s when every file runs at once).
+
 - **2026-11-08**: Add-on A3 time to value, on `feature/add-ons` (the user asked for the same branch;
   PR #12 with A1/A2 was already merged, so the branch was fast-forwarded to main first). One
   discrepancy in the brief: its example lists the failover router on Day 3, but its own rule and

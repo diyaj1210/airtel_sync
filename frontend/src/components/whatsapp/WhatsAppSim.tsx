@@ -6,7 +6,7 @@ import type { MessageKey } from "../../i18n/en";
 import { useI18n } from "../../i18n/I18nProvider";
 import { referralCode } from "../../referral";
 import { readAloudSupported, speak, stopSpeaking } from "../../voice";
-import { VoiceButton } from "../VoiceButton";
+import { useDictation, VoiceButton, VoiceStatus } from "../VoiceButton";
 
 /**
  * WhatsApp simulator (step 8). Plays the owner's WhatsApp app against the MOCK WhatsApp Business
@@ -44,6 +44,9 @@ export function WhatsAppSim({ fetchFn }: { fetchFn?: typeof fetch }) {
   const [numberError, setNumberError] = useState(false);
   const [bubbles, setBubbles] = useState<Bubble[]>([]);
   const [text, setText] = useState(() => `Hi${referralCode() ? ` ${referralCode()}` : ""}`);
+  // Voice note: the words go into the box as the owner speaks; they can correct them, then Send.
+  const [dictated, setDictated] = useState(false);
+  const dictation = useDictation(text, (v) => setText(v.slice(0, MAX_TEXT)), () => setDictated(true));
   const [busy, setBusy] = useState(false);
   const [openList, setOpenList] = useState<number | null>(null);
   const [sample, setSample] = useState<string | null>(null);
@@ -88,13 +91,11 @@ export function WhatsAppSim({ fetchFn }: { fetchFn?: typeof fetch }) {
     const value = text.trim().slice(0, MAX_TEXT);
     if (!value || !phone) return;
     setText("");
-    void exchange({ key: key(), from: "me", text: value, kind: "text" }, () => sendText(phone, value, false, fetchFn));
+    const voice = dictated;
+    setDictated(false);
+    void exchange({ key: key(), from: "me", text: value, kind: voice ? "voice" : "text" }, () => sendText(phone, value, voice, fetchFn));
   };
 
-  const voice = (said: string) => {
-    const value = said.slice(0, MAX_TEXT);
-    if (phone) void exchange({ key: key(), from: "me", text: value, kind: "voice" }, () => sendText(phone, value, true, fetchFn));
-  };
 
   const tap = (id: string, title: string) => {
     if (!phone) return;
@@ -265,10 +266,11 @@ export function WhatsAppSim({ fetchFn }: { fetchFn?: typeof fetch }) {
           autoComplete="off"
           onChange={(e) => setText(e.target.value)}
         />
-        <VoiceButton disabled={busy} onText={voice} />
-        <button type="submit" className="wa__send" disabled={busy || text.trim() === ""} aria-label={t("wa.send")}>
+        <VoiceButton dictation={dictation} disabled={busy} />
+        <button type="submit" className="wa__send" disabled={busy || text.trim() === "" || dictation.listening} aria-label={t("wa.send")}>
           ➤
         </button>
+        <VoiceStatus dictation={dictation} />
       </form>
       <p className="muted small">{t("voice.privacy")}</p>
     </section>

@@ -567,11 +567,11 @@ export const en = {
   "wa.error": "Message not sent. Check your connection and try again.",
   "wa.readAloud": "Read replies aloud",
   "wa.demoPhoto": "DEMO: send {sample}'s photo of the {doc}",
-  "voice.start": "Speak your message",
+  "voice.start": "Speak instead of typing",
   "voice.stop": "Stop listening",
-  "voice.listening": "Listening… speak now",
+  "voice.listening": "Listening... speak now. Your words appear in the box; check them, then press Send.",
   "voice.privacy": "Voice: your browser turns speech into text (Chrome and Edge use their own speech service for this); only the text is sent to us, no recording is kept.",
-  "voice.error.no_speech": "We did not hear anything. Tap the mic and speak again.",
+  "voice.error.no_speech": "We did not hear anything. Tap the mic and speak again, or type.",
   "voice.error.not_allowed": "The microphone is blocked. Allow it in your browser, or type instead.",
   "voice.error.failed": "Voice input did not work. Please type instead.",
 
@@ -777,6 +777,9 @@ export const en = {
   "track.planned": "Planned {date}",
   "track.actual": "done {date}",
   "track.notYet": "not yet",
+  "voice.stopLink": "Stop",
+  "voice.error.network": "The browser's speech service could not be reached (it needs the internet). Please type instead.",
+  "voice.error.no_microphone": "No microphone found. Check that one is connected and chosen in your system settings.",
 } as const;
 
 export type MessageKey = keyof typeof en;
